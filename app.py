@@ -1,4 +1,6 @@
-import os
+
+import sys
+print("Running Python version:", sys.version)import os
 from flask import Flask, render_template, request
 from datetime import date
 from flask_sqlalchemy import SQLAlchemy  # <- tohle musí být před db = SQLAlchemy(app)

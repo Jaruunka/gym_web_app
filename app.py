@@ -94,12 +94,8 @@ with app.app_context():
 
 # --- Spuštění ---
 if __name__ == "__main__":
-
-import sys
-print("Running Python version:", sys.version)import os
-from flask import Flask, render_template, request
-from datetime import date
-from flask_sqlalchemy import SQLAlchemy  # <- tohle musí být před db = SQLAlchemy(app)
+    print("Running Python version:", sys.version)
+    app.run(debug=True)  
 
 # --- cesta k šablonám ---
 templates_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")

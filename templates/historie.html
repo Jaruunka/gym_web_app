@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Historie tréninků</title>
+</head>
+<body>
+
+<h1>Historie tréninků</h1>
+
+<table border="1" cellpadding="5">
+<tr>
+    <th>Datum</th>
+    <th>Cvik</th>
+    <th>Váha</th>
+    <th>Opakování</th>
+    <th>Série</th>
+    <th>Minuty</th>
+    <th>Rychlost</th>
+    <th>Stoupání</th>
+</tr>
+
+{% for w in workouts %}
+<tr>
+    <td>{{ w.date }}</td>
+    <td>{{ w.exercise }}</td>
+
+    {% if w.exercise == "Běh na pásu" %}
+        <td></td>   <!-- váha -->
+        <td></td>   <!-- opakování -->
+        <td></td>   <!-- série -->
+
+        <td>{{ w.minutes }}</td>
+        <td>{{ w.speed }}</td>
+        <td>{{ w.incline }}</td>
+    {% else %}
+        <td>{{ w.weight }}</td>
+        <td>{{ w.reps }}</td>
+        <td>{{ w.set_number }}</td>
+
+        <td></td>   <!-- minuty -->
+        <td></td>   <!-- rychlost -->
+        <td></td>   <!-- stoupání -->
+    {% endif %}
+</tr>
+{% endfor %}
+
+</table>
+
+<br>
+<a href="/">Zpět</a>
+
+</body>
+</html>

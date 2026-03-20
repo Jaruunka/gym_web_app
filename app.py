@@ -91,11 +91,7 @@ def historie():
 # --- Vytvoření tabulek ---
 with app.app_context():
     db.create_all()
-
-# --- Spuštění ---
-if __name__ == "__main__":
-    print("Running Python version:", sys.version)
-    app.run(debug=True)  
+ 
 
 # --- cesta k šablonám ---
 templates_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
@@ -182,4 +178,5 @@ with app.app_context():
 
 # --- Spuštění ---
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)

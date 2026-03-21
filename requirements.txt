@@ -1,4 +1,10 @@
+# web framework
 Flask==2.3.3
+# ORM
 Flask-SQLAlchemy==3.0.5
-pandas==2.1.0      
-gunicorn==21.2.0    
+# login management
+flask_login==0.6.2
+# data handling
+pandas==2.1.0
+# production server
+gunicorn==21.2.00    

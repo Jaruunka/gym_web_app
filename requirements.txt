@@ -1,6 +1,6 @@
-Flask==2.3.3
+Flask==2.2.5
 Flask-SQLAlchemy==3.0.5
 flask_login==0.6.2
 pandas==2.1.0
 gunicorn==21.2.0
-Werkzeug
+Werkzeug==2.2.3

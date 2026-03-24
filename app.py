@@ -20,7 +20,7 @@ if db_url:
     db_url = db_url.replace("postgres://", "postgresql://")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url or "sqlite:///" + os.path.join(basedir, "gym.db")
-)
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)

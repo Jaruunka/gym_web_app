@@ -6,6 +6,12 @@
 </head>
 <body>
 
+{% if current_user.is_authenticated %}
+    <p>Jsi přihlášen jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
+{% else %}
+    <p><a href="{{ url_for('login') }}">Přihlásit se</a> | <a href="{{ url_for('register') }}">Registrovat</a></p>
+{% endif %}
+
 <h1>Historie tréninků</h1>
 
 <table border="1" cellpadding="5">
@@ -48,7 +54,7 @@
 </table>
 
 <br>
-<a href="/">Zpět</a>
+<a href="/" style="text-decoration:none; padding:5px 10px; background-color:#ccc; border-radius:4px;">Zpět</a>
 
 </body>
 </html>

@@ -1,81 +1,55 @@
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-<meta charset="UTF-8">
-<title>Zadat trénink</title>
-
-<script>
-function toggleFields() {
-    let exercise = document.getElementById("exercise").value
-
-    let strength = document.getElementById("strength_fields")
-    let cardio = document.getElementById("cardio_fields")
-
-    if (exercise === "Běh na pásu") {
-        strength.style.display = "none"
-        cardio.style.display = "block"
-    } else {
-        strength.style.display = "block"
-        cardio.style.display = "none"
-    }
-}
-</script>
-
-</head>
-
 <body onload="toggleFields()">
 
 <h1>Zadat trénink</h1>
+
+{% if current_user.is_authenticated %}
+    <p>Jsi přihlášen jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
+{% else %}
+    <p><a href="{{ url_for('login') }}">Přihlásit se</a> | <a href="{{ url_for('register') }}">Registrovat</a></p>
+{% endif %}
 
 {% if message %}
 <p style="color:green;">{{ message }}</p>
 {% endif %}
 
 <form method="POST">
+    <label for="date">Datum:</label>
+    <input type="date" id="date" name="date" required value="{{ today }}">
 
-<label for="date">Datum:</label>
-<input type="date" id="date" name="date" required value="{{ today }}">
+    <label for="exercise">Cvik:</label>
+    <select id="exercise" name="exercise" required onchange="toggleFields()">
+        <option value="Dřepy" {% if exercise == 'Dřepy' %}selected{% endif %}>Dřepy</option>
+        <option value="Hipthrusty" {% if exercise == 'Hipthrusty' %}selected{% endif %}>Hipthrusty</option>
+        <option value="Bulhary" {% if exercise == 'Bulhary' %}selected{% endif %}>Bulhary</option>
+        <option value="Tricepsový tlak" {% if exercise == 'Tricepsový tlak' %}selected{% endif %}>Tricepsový tlak</option>
+        <option value="Abduction" {% if exercise == 'Abduction' %}selected{% endif %}>Abduction</option>
+        <option value="Běh na pásu" {% if exercise == 'Běh na pásu' %}selected{% endif %}>Běh na pásu</option>
+    </select>
 
-<label for="exercise">Cvik:</label>
-<select id="exercise" name="exercise" required onchange="toggleFields()">
-<option value="Dřepy" {% if exercise == 'Dřepy' %}selected{% endif %}>Dřepy</option>
-<option value="Hipthrusty" {% if exercise == 'Hipthrusty' %}selected{% endif %}>Hipthrusty</option>
-<option value="Bulhary" {% if exercise == 'Bulhary' %}selected{% endif %}>Bulhary</option>
-<option value="Tricepsový tlak" {% if exercise == 'Tricepsový tlak' %}selected{% endif %}>Tricepsový tlak</option>
-<option value="Abduction" {% if exercise == 'Abduction' %}selected{% endif %}>Abduction</option>
-<option value="Běh na pásu" {% if exercise == 'Běh na pásu' %}selected{% endif %}>Běh na pásu</option>
-</select>
+    <div id="strength_fields">
+        <label for="weight">Váha (kg):</label>
+        <input type="number" id="weight" name="weight" min="0">
 
-<div id="strength_fields">
+        <label for="reps">Opakování:</label>
+        <input type="number" id="reps" name="reps" min="1">
 
-<label for="weight">Váha (kg):</label>
-<input type="number" id="weight" name="weight" min="0">
+        <label for="set">Série:</label>
+        <input type="number" id="set" name="set" value="{{ next_set }}" readonly>
+    </div>
 
-<label for="reps">Opakování:</label>
-<input type="number" id="reps" name="reps" min="1">
+    <div id="cardio_fields">
+        <label for="minutes">Minuty:</label>
+        <input type="number" id="minutes" name="minutes">
 
-<label for="set">Série:</label>
-<input type="number" id="set" name="set" value="{{ next_set }}" readonly>
+        <label for="speed">Rychlost:</label>
+        <input type="number" step="0.1" id="speed" name="speed">
 
-</div>
+        <label for="incline">Stoupání:</label>
+        <input type="number" step="0.1" id="incline" name="incline">
+    </div>
 
-<div id="cardio_fields">
-
-<label for="minutes">Minuty:</label>
-<input type="number" id="minutes" name="minutes">
-
-<label for="speed">Rychlost:</label>
-<input type="number" step="0.1" id="speed" name="speed">
-
-<label for="incline">Stoupání:</label>
-<input type="number" step="0.1" id="incline" name="incline">
-
-</div>
-
-<br>
-
-<button type="submit">Uložit</button>
-
+    <br>
+    <button type="submit">Uložit</button>
 </form>
 
 <p>
@@ -83,6 +57,3 @@ function toggleFields() {
 Zpět
 </a>
 </p>
-
-</body>
-</html>

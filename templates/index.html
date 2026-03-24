@@ -4,27 +4,25 @@
     <meta charset="UTF-8">
     <title>Gym App</title>
 </head>
-
 <body>
     <h1>Vítej na Gym Web App</h1>
 
     {% if current_user.is_authenticated %}
         <p>Jsi přihlášen jako {{ current_user.email }}.</p>
-        <a href="{{ url_for('logout') }}">Odhlásit se</a>
+        <nav>
+            <ul>
+                <li><a href="/zadat">Zadat nový trénink</a></li>
+                <li><a href="/historie">Historie tréninků</a></li>
+                <li><a href="{{ url_for('logout') }}">Odhlásit se</a></li>
+            </ul>
+        </nav>
     {% else %}
-        <a href="{{ url_for('login') }}">Přihlásit se</a> |
-        <a href="{{ url_for('register') }}">Registrovat</a>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('login') }}">Přihlásit se</a></li>
+                <li><a href="{{ url_for('register') }}">Registrovat</a></li>
+            </ul>
+        </nav>
     {% endif %}
-
-    <nav>
-        <ul>
-            <li><a href="/zadat">Zadat nový trénink</a></li>
-            <li><a href="/historie">Historie tréninků</a></li>
-            {% if not current_user.is_authenticated %}
-                <li><a href="/register">Registrace</a></li>
-                <li><a href="/login">Přihlášení</a></li>
-            {% endif %}
-        </ul>
-    </nav>
 </body>
 </html>

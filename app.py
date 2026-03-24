@@ -14,8 +14,12 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super-secret-key")
 
 # --- databáze ---
 # pro test lokálně/Render může být SQLite
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-    "DATABASE_URL", "sqlite:///" + os.path.join(basedir, "gym.db")
+db_url = os.environ.get("DATABASE_URL")
+
+if db_url:
+    db_url = db_url.replace("postgres://", "postgresql://")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = db_url or "sqlite:///" + os.path.join(basedir, "gym.db")
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 

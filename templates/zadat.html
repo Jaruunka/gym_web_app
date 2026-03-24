@@ -3,7 +3,7 @@
 <h1>Zadat trénink</h1>
 
 {% if current_user.is_authenticated %}
-    <p>Jsi přihlášen jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
+    <p>Jsi přihlášen(a) jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
 {% else %}
     <p><a href="{{ url_for('login') }}">Přihlásit se</a> | <a href="{{ url_for('register') }}">Registrovat</a></p>
 {% endif %}
@@ -26,6 +26,7 @@
         <option value="Běh na pásu" {% if exercise == 'Běh na pásu' %}selected{% endif %}>Běh na pásu</option>
     </select>
 
+    <!-- Silový trénink -->
     <div id="strength_fields">
         <label for="weight">Váha (kg):</label>
         <input type="number" id="weight" name="weight" min="0">
@@ -37,15 +38,16 @@
         <input type="number" id="set" name="set" value="{{ next_set }}" readonly>
     </div>
 
+    <!-- Kardio trénink -->
     <div id="cardio_fields">
-        <label for="minutes">Minuty:</label>
-        <input type="number" id="minutes" name="minutes">
+        <label for="minutes">Čas (min):</label>
+        <input type="number" id="minutes" name="minutes" min="1">
 
-        <label for="speed">Rychlost:</label>
-        <input type="number" step="0.1" id="speed" name="speed">
+        <label for="speed">Rychlost (km/h):</label>
+        <input type="number" step="0.1" id="speed" name="speed" min="0">
 
-        <label for="incline">Stoupání:</label>
-        <input type="number" step="0.1" id="incline" name="incline">
+        <label for="incline">Stoupání (%):</label>
+        <input type="number" step="0.1" id="incline" name="incline" min="0">
     </div>
 
     <br>
@@ -57,3 +59,21 @@
 Zpět
 </a>
 </p>
+
+<script>
+function toggleFields() {
+    let exercise = document.getElementById("exercise").value;
+    let strength = document.getElementById("strength_fields");
+    let cardio = document.getElementById("cardio_fields");
+
+    if (exercise === "Běh na pásu") {
+        strength.style.display = "none";
+        cardio.style.display = "block";
+    } else {
+        strength.style.display = "block";
+        cardio.style.display = "none";
+    }
+}
+</script>
+
+</body>

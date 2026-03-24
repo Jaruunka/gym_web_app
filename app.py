@@ -13,14 +13,10 @@ app = Flask(__name__, template_folder=os.path.join(basedir, "templates"))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super-secret-key")
 
 # --- databáze ---
-# pro test lokálně/Render může být SQLite
 db_url = os.environ.get("DATABASE_URL")
-
 if db_url:
     db_url = db_url.replace("postgres://", "postgresql://")
-
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url or "sqlite:///" + os.path.join(basedir, "gym.db")
-
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -71,7 +67,6 @@ def register():
         try:
             email = request.form.get("email")
             password = request.form.get("password")
-
             if not email or not password:
                 flash("Vyplň email i heslo")
                 return redirect(url_for("register"))
@@ -98,7 +93,6 @@ def login():
         try:
             email = request.form.get("email")
             password = request.form.get("password")
-
             user = User.query.filter_by(email=email).first()
             if user and user.check_password(password):
                 login_user(user)
@@ -128,10 +122,14 @@ def zadat():
     next_set = 1
 
     try:
-        count_sets = Workout.query.filter_by(
-            date=selected_date, exercise=exercise, user_id=current_user.id
-        ).count()
-        next_set = count_sets + 1
+        # --- počet série pro aktuální cvik ---
+        if exercise != "Běh na pásu":
+            count_sets = Workout.query.filter_by(
+                date=selected_date, exercise=exercise, user_id=current_user.id
+            ).count()
+            next_set = count_sets + 1
+        else:
+            next_set = None
 
         if request.method == "POST":
             date_val = request.form.get("date") or date.today().isoformat()
@@ -150,13 +148,17 @@ def zadat():
                     user_id=current_user.id,
                 )
                 message = "Kardio záznam uložen!"
+                next_set = None
             else:
                 weight = int(request.form.get("weight") or 0)
                 reps = int(request.form.get("reps") or 0)
+
+                # --- správné počítání série podle CVIKU ---
                 count_sets = Workout.query.filter_by(
-                    date=date_val, exercise=exercise_val, user_id=current_user.id
+                    exercise=exercise_val, user_id=current_user.id
                 ).count()
                 set_number = count_sets + 1
+
                 novy_trenink = Workout(
                     date=date_val,
                     exercise=exercise_val,
@@ -170,7 +172,6 @@ def zadat():
 
             db.session.add(novy_trenink)
             db.session.commit()
-
             flash(message)
             return redirect(url_for("zadat"))
 
@@ -178,7 +179,11 @@ def zadat():
         flash(f"Chyba při zadávání tréninku: {e}")
 
     return render_template(
-        "zadat.html", today=selected_date, next_set=next_set, exercise=exercise, message=message
+        "zadat.html",
+        today=selected_date,
+        next_set=next_set,
+        exercise=exercise,
+        message=message
     )
 
 @app.route("/historie")

@@ -1,18 +1,15 @@
 import os
 from datetime import date
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# --- složka s app.py ---
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# --- Flask app ---
 app = Flask(__name__, template_folder=os.path.join(basedir, "templates"))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super-secret-key")
 
-# --- databáze ---
 db_url = os.environ.get("DATABASE_URL")
 if db_url:
     db_url = db_url.replace("postgres://", "postgresql://")
@@ -21,7 +18,6 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-# --- modely ---
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
@@ -45,7 +41,6 @@ class Workout(db.Model):
     speed = db.Column(db.Float, nullable=True)
     incline = db.Column(db.Float, nullable=True)
 
-# --- LoginManager ---
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -54,7 +49,6 @@ login_manager.login_view = "login"
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- routes ---
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -102,12 +96,13 @@ def logout():
 @app.route("/zadat", methods=["GET", "POST"])
 @login_required
 def zadat():
+    # --- datum a cvik z query stringu nebo POST ---
     date_val = request.form.get("date") or request.args.get("date") or date.today().isoformat()
     exercise_val = request.form.get("exercise") or request.args.get("exercise") or "Dřepy"
     message = ""
     next_set = 1
 
-    # --- spočítat další sérii pro zvolený cvik a datum ---
+    # --- spočítat další sérii pro daný cvik a datum ---
     if exercise_val != "Běh na pásu":
         count_sets = Workout.query.filter_by(
             date=date_val,
@@ -118,6 +113,7 @@ def zadat():
     else:
         next_set = None
 
+    # --- POST: uložit trénink ---
     if request.method == "POST":
         if exercise_val == "Běh na pásu":
             minutes = int(request.form.get("minutes") or 0)
@@ -150,6 +146,7 @@ def zadat():
         db.session.add(novy_trenink)
         db.session.commit()
         flash(message)
+        # redirect s query stringem, aby při reloadu měl správný cvik a datum
         return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
     return render_template(
@@ -160,36 +157,15 @@ def zadat():
         message=message
     )
 
-# --- AJAX route pro dynamické číslo série ---
-@app.route("/next_set")
-@login_required
-def next_set_ajax():
-    date_val = request.args.get("date") or date.today().isoformat()
-    exercise_val = request.args.get("exercise") or "Dřepy"
-
-    if exercise_val == "Běh na pásu":
-        next_set = None
-    else:
-        count_sets = Workout.query.filter_by(
-            date=date_val,
-            exercise=exercise_val,
-            user_id=current_user.id
-        ).count()
-        next_set = count_sets + 1
-
-    return jsonify({"next_set": next_set})
-
 @app.route("/historie")
 @login_required
 def historie():
     workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.id.desc()).all()
     return render_template("historie.html", workouts=workouts)
 
-# --- inicializace databáze ---
 with app.app_context():
     db.create_all()
 
-# --- spuštění ---
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)

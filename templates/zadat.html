@@ -1,23 +1,23 @@
-<body onload="toggleFields(); updateNextSet()">
+<body onload="toggleFields()">
 
 <h1>Zadat trénink</h1>
 
 {% if current_user.is_authenticated %}
-    <p>Jsi přihlášen(a) jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
+<p>Jsi přihlášen(a) jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
 {% else %}
-    <p><a href="{{ url_for('login') }}">Přihlásit se</a> | <a href="{{ url_for('register') }}">Registrovat</a></p>
+<p><a href="{{ url_for('login') }}">Přihlásit se</a> | <a href="{{ url_for('register') }}">Registrovat</a></p>
 {% endif %}
 
 {% if message %}
 <p style="color:green;">{{ message }}</p>
 {% endif %}
 
-<form method="POST" id="workoutForm">
+<form method="POST">
     <label for="date">Datum:</label>
-    <input type="date" id="date" name="date" required value="{{ today }}" onchange="updateNextSet()">
+    <input type="date" id="date" name="date" required value="{{ today }}" onchange="updatePage()">
 
     <label for="exercise">Cvik:</label>
-    <select id="exercise" name="exercise" required onchange="toggleFields(); updateNextSet();">
+    <select id="exercise" name="exercise" required onchange="updatePage(); toggleFields();">
         <option value="Dřepy" {% if exercise == 'Dřepy' %}selected{% endif %}>Dřepy</option>
         <option value="Hipthrusty" {% if exercise == 'Hipthrusty' %}selected{% endif %}>Hipthrusty</option>
         <option value="Bulhary" {% if exercise == 'Bulhary' %}selected{% endif %}>Bulhary</option>
@@ -29,10 +29,10 @@
     <!-- Silový trénink -->
     <div id="strength_fields">
         <label for="weight">Váha (kg):</label>
-        <input type="number" id="weight" name="weight" min="0" value="{{ request.form.weight or '' }}">
+        <input type="number" id="weight" name="weight" min="0">
 
         <label for="reps">Opakování:</label>
-        <input type="number" id="reps" name="reps" min="1" value="{{ request.form.reps or '' }}">
+        <input type="number" id="reps" name="reps" min="1">
 
         <label for="set">Série:</label>
         <input type="number" id="set" name="set" value="{{ next_set or 1 }}" readonly>
@@ -41,13 +41,13 @@
     <!-- Kardio trénink -->
     <div id="cardio_fields">
         <label for="minutes">Čas (min):</label>
-        <input type="number" id="minutes" name="minutes" min="1" value="{{ request.form.minutes or '' }}">
+        <input type="number" id="minutes" name="minutes" min="1">
 
         <label for="speed">Rychlost (km/h):</label>
-        <input type="number" step="0.1" id="speed" name="speed" min="0" value="{{ request.form.speed or '' }}">
+        <input type="number" step="0.1" id="speed" name="speed" min="0">
 
         <label for="incline">Stoupání (%):</label>
-        <input type="number" step="0.1" id="incline" name="incline" min="0" value="{{ request.form.incline or '' }}">
+        <input type="number" step="0.1" id="incline" name="incline" min="0">
     </div>
 
     <br>
@@ -65,7 +65,6 @@ function toggleFields() {
     let exercise = document.getElementById("exercise").value;
     let strength = document.getElementById("strength_fields");
     let cardio = document.getElementById("cardio_fields");
-
     if (exercise === "Běh na pásu") {
         strength.style.display = "none";
         cardio.style.display = "block";
@@ -75,21 +74,11 @@ function toggleFields() {
     }
 }
 
-function updateNextSet() {
+// reload stránky při změně cviku nebo data
+function updatePage() {
     let date = document.getElementById("date").value;
     let exercise = document.getElementById("exercise").value;
-
-    if (exercise === "Běh na pásu") {
-        document.getElementById("set").value = "";
-        return;
-    }
-
-    fetch(`/next_set?date=${date}&exercise=${exercise}`)
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById("set").value = data.next_set;
-        })
-        .catch(error => console.error('Chyba při získávání čísla série:', error));
+    window.location.href = `/zadat?date=${date}&exercise=${exercise}`;
 }
 </script>
 

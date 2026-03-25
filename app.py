@@ -137,7 +137,7 @@ def zadat():
     next_set = 1
 
     try:
-        # --- počet sérií pro aktuální cvik ---
+        # --- počet sérií pro aktuální cvik při GET ---
         if exercise != "Běh na pásu":
             count_sets = Workout.query.filter_by(
                 date=selected_date,
@@ -172,12 +172,12 @@ def zadat():
                 weight = int(request.form.get("weight") or 0)
                 reps = int(request.form.get("reps") or 0)
 
+                # Počet sérií jen pro tento cvik a datum
                 count_sets = Workout.query.filter_by(
                     date=date_val,
                     exercise=exercise_val,
                     user_id=current_user.id
                 ).count()
-
                 set_number = count_sets + 1
 
                 novy_trenink = Workout(

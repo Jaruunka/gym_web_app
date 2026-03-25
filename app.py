@@ -16,6 +16,7 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super-secret-key")
 db_url = os.environ.get("DATABASE_URL")
 if db_url:
     db_url = db_url.replace("postgres://", "postgresql://")
+
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url or "sqlite:///" + os.path.join(basedir, "gym.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -33,6 +34,7 @@ class User(db.Model, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+
 class Workout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(20))
@@ -47,19 +49,23 @@ class Workout(db.Model):
     speed = db.Column(db.Float, nullable=True)
     incline = db.Column(db.Float, nullable=True)
 
+
 # --- LoginManager ---
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
 
 # --- routes ---
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -67,6 +73,7 @@ def register():
         try:
             email = request.form.get("email")
             password = request.form.get("password")
+
             if not email or not password:
                 flash("Vyplň email i heslo")
                 return redirect(url_for("register"))
@@ -79,13 +86,16 @@ def register():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
+
             flash("Registrace hotova! Teď se můžeš přihlásit.")
             return redirect(url_for("login"))
+
         except Exception as e:
             flash(f"Chyba při registraci: {e}")
             return redirect(url_for("register"))
 
     return render_template("register.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -93,18 +103,22 @@ def login():
         try:
             email = request.form.get("email")
             password = request.form.get("password")
+
             user = User.query.filter_by(email=email).first()
+
             if user and user.check_password(password):
                 login_user(user)
                 return redirect(url_for("index"))
             else:
                 flash("Špatné údaje!")
                 return redirect(url_for("login"))
+
         except Exception as e:
             flash(f"Chyba při přihlášení: {e}")
             return redirect(url_for("login"))
 
     return render_template("login.html")
+
 
 @app.route("/logout")
 @login_required
@@ -112,6 +126,7 @@ def logout():
     logout_user()
     flash("Odhlášeno!")
     return redirect(url_for("login"))
+
 
 @app.route("/zadat", methods=["GET", "POST"])
 @login_required
@@ -122,10 +137,12 @@ def zadat():
     next_set = 1
 
     try:
-        # --- počet série pro aktuální cvik ---
+        # --- počet sérií pro aktuální cvik ---
         if exercise != "Běh na pásu":
             count_sets = Workout.query.filter_by(
-                date=selected_date, exercise=exercise, user_id=current_user.id
+                date=selected_date,
+                exercise=exercise,
+                user_id=current_user.id
             ).count()
             next_set = count_sets + 1
         else:
@@ -139,6 +156,7 @@ def zadat():
                 minutes = int(request.form.get("minutes") or 0)
                 speed = float(request.form.get("speed") or 0)
                 incline = float(request.form.get("incline") or 0)
+
                 novy_trenink = Workout(
                     date=date_val,
                     exercise=exercise_val,
@@ -149,14 +167,17 @@ def zadat():
                 )
                 message = "Kardio záznam uložen!"
                 next_set = None
+
             else:
                 weight = int(request.form.get("weight") or 0)
                 reps = int(request.form.get("reps") or 0)
 
-                # --- správné počítání série podle CVIKU ---
                 count_sets = Workout.query.filter_by(
-                    exercise=exercise_val, user_id=current_user.id
+                    date=date_val,
+                    exercise=exercise_val,
+                    user_id=current_user.id
                 ).count()
+
                 set_number = count_sets + 1
 
                 novy_trenink = Workout(
@@ -186,15 +207,21 @@ def zadat():
         message=message
     )
 
+
 @app.route("/historie")
 @login_required
 def historie():
-    workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.id.desc()).all()
+    workouts = Workout.query.filter_by(
+        user_id=current_user.id
+    ).order_by(Workout.id.desc()).all()
+
     return render_template("historie.html", workouts=workouts)
+
 
 # --- inicializace databáze při startu ---
 with app.app_context():
     db.create_all()
+
 
 # --- spuštění ---
 if __name__ == "__main__":

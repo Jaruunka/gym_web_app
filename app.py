@@ -38,11 +38,9 @@ class Workout(db.Model):
     date = db.Column(db.String(20))
     exercise = db.Column(db.String(100))
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-
     weight = db.Column(db.Integer, nullable=True)
     reps = db.Column(db.Integer, nullable=True)
     set_number = db.Column(db.Integer, nullable=True)
-
     minutes = db.Column(db.Integer, nullable=True)
     speed = db.Column(db.Float, nullable=True)
     incline = db.Column(db.Float, nullable=True)
@@ -64,41 +62,33 @@ def index():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        try:
-            email = request.form.get("email")
-            password = request.form.get("password")
-            if not email or not password:
-                flash("Vyplň email i heslo")
-                return redirect(url_for("register"))
-            if User.query.filter_by(email=email).first():
-                flash("Uživatel už existuje!")
-                return redirect(url_for("register"))
-            user = User(email=email)
-            user.set_password(password)
-            db.session.add(user)
-            db.session.commit()
-            flash("Registrace hotova! Teď se můžeš přihlásit.")
-            return redirect(url_for("login"))
-        except Exception as e:
-            flash(f"Chyba při registraci: {e}")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        if not email or not password:
+            flash("Vyplň email i heslo")
             return redirect(url_for("register"))
+        if User.query.filter_by(email=email).first():
+            flash("Uživatel už existuje!")
+            return redirect(url_for("register"))
+        user = User(email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        flash("Registrace hotova! Teď se můžeš přihlásit.")
+        return redirect(url_for("login"))
     return render_template("register.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        try:
-            email = request.form.get("email")
-            password = request.form.get("password")
-            user = User.query.filter_by(email=email).first()
-            if user and user.check_password(password):
-                login_user(user)
-                return redirect(url_for("index"))
-            else:
-                flash("Špatné údaje!")
-                return redirect(url_for("login"))
-        except Exception as e:
-            flash(f"Chyba při přihlášení: {e}")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        user = User.query.filter_by(email=email).first()
+        if user and user.check_password(password):
+            login_user(user)
+            return redirect(url_for("index"))
+        else:
+            flash("Špatné údaje!")
             return redirect(url_for("login"))
     return render_template("login.html")
 
@@ -112,75 +102,64 @@ def logout():
 @app.route("/zadat", methods=["GET", "POST"])
 @login_required
 def zadat():
-    # --- získání hodnot cviku a data ---
-    selected_date = request.form.get("date") or date.today().isoformat()
-    exercise = request.form.get("exercise") or "Dřepy"
+    # --- získání cviku a data z POST nebo GET parametrů ---
+    date_val = request.form.get("date") or request.args.get("date") or date.today().isoformat()
+    exercise_val = request.form.get("exercise") or request.args.get("exercise") or "Dřepy"
     message = ""
     next_set = 1
 
-    try:
-        # --- počet sérií pro aktuální cvik a datum ---
-        if exercise != "Běh na pásu":
-            count_sets = Workout.query.filter_by(
-                date=selected_date,
-                exercise=exercise,
+    # --- spočítat další sérii pro zvolený cvik a datum ---
+    if exercise_val != "Běh na pásu":
+        count_sets = Workout.query.filter_by(
+            date=date_val,
+            exercise=exercise_val,
+            user_id=current_user.id
+        ).count()
+        next_set = count_sets + 1
+    else:
+        next_set = None
+
+    # --- zpracování POST (uložení tréninku) ---
+    if request.method == "POST":
+        if exercise_val == "Běh na pásu":
+            minutes = int(request.form.get("minutes") or 0)
+            speed = float(request.form.get("speed") or 0)
+            incline = float(request.form.get("incline") or 0)
+            novy_trenink = Workout(
+                date=date_val,
+                exercise=exercise_val,
+                minutes=minutes,
+                speed=speed,
+                incline=incline,
                 user_id=current_user.id
-            ).count()
-            next_set = count_sets + 1
+            )
+            message = "Kardio záznam uložen!"
         else:
-            next_set = None
+            weight = int(request.form.get("weight") or 0)
+            reps = int(request.form.get("reps") or 0)
+            set_number = next_set
+            novy_trenink = Workout(
+                date=date_val,
+                exercise=exercise_val,
+                weight=weight,
+                reps=reps,
+                set_number=set_number,
+                user_id=current_user.id
+            )
+            message = f"Série {set_number} uložena!"
+            next_set += 1
 
-        if request.method == "POST":
-            date_val = request.form.get("date") or date.today().isoformat()
-            exercise_val = request.form.get("exercise") or "Dřepy"
-
-            if exercise_val == "Běh na pásu":
-                minutes = int(request.form.get("minutes") or 0)
-                speed = float(request.form.get("speed") or 0)
-                incline = float(request.form.get("incline") or 0)
-                novy_trenink = Workout(
-                    date=date_val,
-                    exercise=exercise_val,
-                    minutes=minutes,
-                    speed=speed,
-                    incline=incline,
-                    user_id=current_user.id
-                )
-                message = "Kardio záznam uložen!"
-                next_set = None
-            else:
-                weight = int(request.form.get("weight") or 0)
-                reps = int(request.form.get("reps") or 0)
-                count_sets = Workout.query.filter_by(
-                    date=date_val,
-                    exercise=exercise_val,
-                    user_id=current_user.id
-                ).count()
-                set_number = count_sets + 1
-                novy_trenink = Workout(
-                    date=date_val,
-                    exercise=exercise_val,
-                    weight=weight,
-                    reps=reps,
-                    set_number=set_number,
-                    user_id=current_user.id
-                )
-                message = f"Série {set_number} uložena!"
-                next_set = set_number + 1
-
-            db.session.add(novy_trenink)
-            db.session.commit()
-            flash(message)
-            return redirect(url_for("zadat"))
-
-    except Exception as e:
-        flash(f"Chyba při zadávání tréninku: {e}")
+        db.session.add(novy_trenink)
+        db.session.commit()
+        flash(message)
+        # redirect přes query string, aby při reloadu GET měla správný cvik a datum
+        return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
     return render_template(
         "zadat.html",
-        today=selected_date,
+        today=date_val,
+        exercise=exercise_val,
         next_set=next_set,
-        exercise=exercise,
         message=message
     )
 

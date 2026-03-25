@@ -133,9 +133,13 @@ def logout():
 def zadat():
     message = ""
 
-    # --- určení aktuálního cviku a data podle POST (pokud existuje) nebo GET ---
-    date_val = request.form.get("date") or date.today().isoformat()
-    exercise_val = request.form.get("exercise") or "Dřepy"
+    # --- načtení cviku a data z POST (při odeslání) nebo GET/aktuální datum ---
+    if request.method == "POST":
+        date_val = request.form.get("date") or date.today().isoformat()
+        exercise_val = request.form.get("exercise") or "Dřepy"
+    else:
+        date_val = request.args.get("date") or date.today().isoformat()
+        exercise_val = request.args.get("exercise") or "Dřepy"
 
     # --- počet sérií pro tento cvik a datum ---
     if exercise_val != "Běh na pásu":
@@ -148,6 +152,7 @@ def zadat():
     else:
         next_set = None
 
+    # --- zpracování POST (uložení tréninku) ---
     if request.method == "POST":
         if exercise_val == "Běh na pásu":
             minutes = int(request.form.get("minutes") or 0)

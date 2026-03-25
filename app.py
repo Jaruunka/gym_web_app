@@ -131,79 +131,73 @@ def logout():
 @app.route("/zadat", methods=["GET", "POST"])
 @login_required
 def zadat():
-    selected_date = request.form.get("date") or date.today().isoformat()
-    exercise = request.form.get("exercise") or "Dřepy"
     message = ""
-    next_set = 1
 
-    try:
-        # --- počet sérií pro aktuální cvik při GET ---
-        if exercise != "Běh na pásu":
-            count_sets = Workout.query.filter_by(
-                date=selected_date,
-                exercise=exercise,
-                user_id=current_user.id
-            ).count()
-            next_set = count_sets + 1
-        else:
+    # --- určení aktuálního cviku a data podle POST (pokud existuje) nebo GET ---
+    date_val = request.form.get("date") or date.today().isoformat()
+    exercise_val = request.form.get("exercise") or "Dřepy"
+
+    # --- počet sérií pro tento cvik a datum ---
+    if exercise_val != "Běh na pásu":
+        count_sets = Workout.query.filter_by(
+            date=date_val,
+            exercise=exercise_val,
+            user_id=current_user.id
+        ).count()
+        next_set = count_sets + 1
+    else:
+        next_set = None
+
+    if request.method == "POST":
+        if exercise_val == "Běh na pásu":
+            minutes = int(request.form.get("minutes") or 0)
+            speed = float(request.form.get("speed") or 0)
+            incline = float(request.form.get("incline") or 0)
+
+            novy_trenink = Workout(
+                date=date_val,
+                exercise=exercise_val,
+                minutes=minutes,
+                speed=speed,
+                incline=incline,
+                user_id=current_user.id,
+            )
+            message = "Kardio záznam uložen!"
             next_set = None
 
-        if request.method == "POST":
-            date_val = request.form.get("date") or date.today().isoformat()
-            exercise_val = request.form.get("exercise") or "Dřepy"
+        else:
+            weight = int(request.form.get("weight") or 0)
+            reps = int(request.form.get("reps") or 0)
 
-            if exercise_val == "Běh na pásu":
-                minutes = int(request.form.get("minutes") or 0)
-                speed = float(request.form.get("speed") or 0)
-                incline = float(request.form.get("incline") or 0)
+            # Počet sérií jen pro tento cvik a datum
+            count_sets = Workout.query.filter_by(
+                date=date_val,
+                exercise=exercise_val,
+                user_id=current_user.id
+            ).count()
+            set_number = count_sets + 1
 
-                novy_trenink = Workout(
-                    date=date_val,
-                    exercise=exercise_val,
-                    minutes=minutes,
-                    speed=speed,
-                    incline=incline,
-                    user_id=current_user.id,
-                )
-                message = "Kardio záznam uložen!"
-                next_set = None
+            novy_trenink = Workout(
+                date=date_val,
+                exercise=exercise_val,
+                weight=weight,
+                reps=reps,
+                set_number=set_number,
+                user_id=current_user.id,
+            )
+            message = f"Série {set_number} uložena!"
+            next_set = set_number + 1
 
-            else:
-                weight = int(request.form.get("weight") or 0)
-                reps = int(request.form.get("reps") or 0)
-
-                # Počet sérií jen pro tento cvik a datum
-                count_sets = Workout.query.filter_by(
-                    date=date_val,
-                    exercise=exercise_val,
-                    user_id=current_user.id
-                ).count()
-                set_number = count_sets + 1
-
-                novy_trenink = Workout(
-                    date=date_val,
-                    exercise=exercise_val,
-                    weight=weight,
-                    reps=reps,
-                    set_number=set_number,
-                    user_id=current_user.id,
-                )
-                message = f"Série {set_number} uložena!"
-                next_set = set_number + 1
-
-            db.session.add(novy_trenink)
-            db.session.commit()
-            flash(message)
-            return redirect(url_for("zadat"))
-
-    except Exception as e:
-        flash(f"Chyba při zadávání tréninku: {e}")
+        db.session.add(novy_trenink)
+        db.session.commit()
+        flash(message)
+        return redirect(url_for("zadat"))
 
     return render_template(
         "zadat.html",
-        today=selected_date,
+        today=date_val,
         next_set=next_set,
-        exercise=exercise,
+        exercise=exercise_val,
         message=message
     )
 

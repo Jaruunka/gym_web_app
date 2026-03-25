@@ -1,6 +1,6 @@
 import os
 from datetime import date
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -102,7 +102,6 @@ def logout():
 @app.route("/zadat", methods=["GET", "POST"])
 @login_required
 def zadat():
-    # --- získání cviku a data z POST nebo GET parametrů ---
     date_val = request.form.get("date") or request.args.get("date") or date.today().isoformat()
     exercise_val = request.form.get("exercise") or request.args.get("exercise") or "Dřepy"
     message = ""
@@ -119,7 +118,6 @@ def zadat():
     else:
         next_set = None
 
-    # --- zpracování POST (uložení tréninku) ---
     if request.method == "POST":
         if exercise_val == "Běh na pásu":
             minutes = int(request.form.get("minutes") or 0)
@@ -152,7 +150,6 @@ def zadat():
         db.session.add(novy_trenink)
         db.session.commit()
         flash(message)
-        # redirect přes query string, aby při reloadu GET měla správný cvik a datum
         return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
     return render_template(
@@ -162,6 +159,25 @@ def zadat():
         next_set=next_set,
         message=message
     )
+
+# --- AJAX route pro dynamické číslo série ---
+@app.route("/next_set")
+@login_required
+def next_set_ajax():
+    date_val = request.args.get("date") or date.today().isoformat()
+    exercise_val = request.args.get("exercise") or "Dřepy"
+
+    if exercise_val == "Běh na pásu":
+        next_set = None
+    else:
+        count_sets = Workout.query.filter_by(
+            date=date_val,
+            exercise=exercise_val,
+            user_id=current_user.id
+        ).count()
+        next_set = count_sets + 1
+
+    return jsonify({"next_set": next_set})
 
 @app.route("/historie")
 @login_required

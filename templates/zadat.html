@@ -1,4 +1,4 @@
-<body onload="toggleFields()">
+<body onload="toggleFields(); updateNextSet()">
 
 <h1>Zadat trénink</h1>
 
@@ -12,12 +12,12 @@
 <p style="color:green;">{{ message }}</p>
 {% endif %}
 
-<form method="POST">
+<form method="POST" id="workoutForm">
     <label for="date">Datum:</label>
-    <input type="date" id="date" name="date" required value="{{ today }}" onchange="this.form.submit()">
+    <input type="date" id="date" name="date" required value="{{ today }}" onchange="updateNextSet()">
 
     <label for="exercise">Cvik:</label>
-    <select id="exercise" name="exercise" required onchange="this.form.submit(); toggleFields();">
+    <select id="exercise" name="exercise" required onchange="toggleFields(); updateNextSet();">
         <option value="Dřepy" {% if exercise == 'Dřepy' %}selected{% endif %}>Dřepy</option>
         <option value="Hipthrusty" {% if exercise == 'Hipthrusty' %}selected{% endif %}>Hipthrusty</option>
         <option value="Bulhary" {% if exercise == 'Bulhary' %}selected{% endif %}>Bulhary</option>
@@ -73,6 +73,23 @@ function toggleFields() {
         strength.style.display = "block";
         cardio.style.display = "none";
     }
+}
+
+function updateNextSet() {
+    let date = document.getElementById("date").value;
+    let exercise = document.getElementById("exercise").value;
+
+    if (exercise === "Běh na pásu") {
+        document.getElementById("set").value = "";
+        return;
+    }
+
+    fetch(`/next_set?date=${date}&exercise=${exercise}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById("set").value = data.next_set;
+        })
+        .catch(error => console.error('Chyba při získávání čísla série:', error));
 }
 </script>
 

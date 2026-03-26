@@ -182,10 +182,62 @@ def historie():
     workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.id.desc()).all()
     return render_template("historie.html", workouts=workouts)
 
+# --- Smazání záznamu ---
+@app.route("/delete/<int:workout_id>")
+@login_required
+def delete_workout(workout_id):
+    workout = Workout.query.get_or_404(workout_id)
+    if workout.user_id != current_user.id:
+        flash("Nemáš oprávnění mazat tento záznam!")
+        return redirect(url_for("historie"))
+
+    db.session.delete(workout)
+    db.session.commit()
+    flash("Záznam smazán!")
+    return redirect(url_for("historie"))
+
+# --- Úprava záznamu ---
+@app.route("/edit/<int:workout_id>", methods=["GET", "POST"], endpoint="edit_workout")
+@login_required
+def edit_workout(workout_id):
+    workout = Workout.query.get_or_404(workout_id)
+    if workout.user_id != current_user.id:
+        flash("Nemáš oprávnění upravit tento záznam!")
+        return redirect(url_for("historie"))
+
+    if request.method == "POST":
+        workout.date = request.form.get("date")
+        workout.exercise = request.form.get("exercise")
+
+        if workout.exercise == "Běh na pásu":
+            workout.minutes = int(request.form.get("minutes") or 0)
+            workout.speed = float(request.form.get("speed") or 0)
+            workout.incline = float(request.form.get("incline") or 0)
+
+            # vyčistit silové údaje
+            workout.weight = None
+            workout.reps = None
+            workout.set_number = None
+        else:
+            workout.weight = int(request.form.get("weight") or 0)
+            workout.reps = int(request.form.get("reps") or 0)
+            workout.set_number = int(request.form.get("set_number") or 1)
+
+            # vyčistit kardio údaje
+            workout.minutes = None
+            workout.speed = None
+            workout.incline = None
+
+        db.session.commit()
+        flash("Záznam upraven!")
+        return redirect(url_for("historie"))
+
+    return render_template("edit_workout.html", workout=workout, silove_cviky=SILOVE_CVIKY)
+
 # CREATE DB
 with app.app_context():
     db.create_all()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)

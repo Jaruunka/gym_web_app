@@ -24,6 +24,7 @@
     <th>Minuty</th>
     <th>Rychlost</th>
     <th>Stoupání</th>
+    <th>Akce</th>
 </tr>
 
 {% for w in workouts %}
@@ -31,23 +32,17 @@
     <td>{{ w.date }}</td>
     <td>{{ w.exercise }}</td>
 
-    {% if w.exercise == "Běh na pásu" %}
-        <td></td>   <!-- váha -->
-        <td></td>   <!-- opakování -->
-        <td></td>   <!-- série -->
+    <td>{{ w.weight or '' }}</td>
+    <td>{{ w.reps or '' }}</td>
+    <td>{{ w.set_number or '' }}</td>
+    <td>{{ w.minutes or '' }}</td>
+    <td>{{ w.speed or '' }}</td>
+    <td>{{ w.incline or '' }}</td>
 
-        <td>{{ w.minutes }}</td>
-        <td>{{ w.speed }}</td>
-        <td>{{ w.incline }}</td>
-    {% else %}
-        <td>{{ w.weight }}</td>
-        <td>{{ w.reps }}</td>
-        <td>{{ w.set_number }}</td>
-
-        <td></td>   <!-- minuty -->
-        <td></td>   <!-- rychlost -->
-        <td></td>   <!-- stoupání -->
-    {% endif %}
+    <td>
+        <a href="{{ url_for('edit_workout', workout_id=w.id) }}">Upravit</a> |
+        <a href="{{ url_for('delete_workout', workout_id=w.id) }}" onclick="return confirm('Opravdu smazat tento záznam?')">Smazat</a>
+    </td>
 </tr>
 {% endfor %}
 

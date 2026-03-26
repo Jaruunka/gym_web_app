@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Upravit záznam</title>
+</head>
+<body>
+
+{% if current_user.is_authenticated %}
+    <p>Jsi přihlášen jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
+{% endif %}
+
+<h1>Upravit záznam</h1>
+
+<form method="POST">
+    <label for="date">Datum:</label>
+    <input type="date" id="date" name="date" required value="{{ workout.date }}">
+
+    <label for="exercise">Cvik:</label>
+    <select id="exercise" name="exercise" required onchange="toggleFields()">
+        {% for cvik in silove_cviky %}
+            <option value="{{ cvik }}" {% if cvik == workout.exercise %}selected{% endif %}>{{ cvik }}</option>
+        {% endfor %}
+    </select>
+
+    <!-- Silový trénink -->
+    <div id="strength_fields">
+        <label for="weight">Váha (kg):</label>
+        <input type="number" id="weight" name="weight" min="0" value="{{ workout.weight or '' }}">
+
+        <label for="reps">Opakování:</label>
+        <input type="number" id="reps" name="reps" min="1" value="{{ workout.reps or '' }}">
+
+        <label for="set_number">Série:</label>
+        <input type="number" id="set_number" name="set_number" value="{{ workout.set_number or 1 }}">
+    </div>
+
+    <!-- Kardio trénink -->
+    <div id="cardio_fields">
+        <label for="minutes">Čas (min):</label>
+        <input type="number" id="minutes" name="minutes" min="1" value="{{ workout.minutes or '' }}">
+
+        <label for="speed">Rychlost (km/h):</label>
+        <input type="number" step="0.1" id="speed" name="speed" min="0" value="{{ workout.speed or '' }}">
+
+        <label for="incline">Stoupání (%):</label>
+        <input type="number" step="0.1" id="incline" name="incline" min="0" value="{{ workout.incline or '' }}">
+    </div>
+
+    <br>
+    <button type="submit">Uložit změny</button>
+</form>
+
+<br>
+<a href="{{ url_for('historie') }}" style="text-decoration:none; padding:5px 10px; background-color:#ccc; border-radius:4px;">Zpět na historii</a>
+
+<script>
+function toggleFields() {
+    let exercise = document.getElementById("exercise").value;
+    let strength = document.getElementById("strength_fields");
+    let cardio = document.getElementById("cardio_fields");
+    if (exercise === "Běh na pásu") {
+        strength.style.display = "none";
+        cardio.style.display = "block";
+    } else {
+        strength.style.display = "block";
+        cardio.style.display = "none";
+    }
+}
+
+// inicializace při načtení stránky
+window.onload = toggleFields;
+</script>
+
+</body>
+</html>

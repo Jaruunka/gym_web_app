@@ -96,24 +96,26 @@ def logout():
 @app.route("/zadat", methods=["GET", "POST"])
 @login_required
 def zadat():
-    # --- datum a cvik z query stringu nebo POST ---
     date_val = request.form.get("date") or request.args.get("date") or date.today().isoformat()
     exercise_val = request.form.get("exercise") or request.args.get("exercise") or "Dřepy"
     message = ""
     next_set = 1
 
-    # --- spočítat další sérii pro daný cvik a datum ---
+    # --- správné určení další série ---
     if exercise_val != "Běh na pásu":
-        count_sets = Workout.query.filter_by(
+        last_set = Workout.query.filter_by(
             date=date_val,
             exercise=exercise_val,
             user_id=current_user.id
-        ).count()
-        next_set = count_sets + 1
+        ).order_by(Workout.set_number.desc()).first()
+
+        if last_set and last_set.set_number:
+            next_set = last_set.set_number + 1
+        else:
+            next_set = 1
     else:
         next_set = None
 
-    # --- POST: uložit trénink ---
     if request.method == "POST":
         if exercise_val == "Běh na pásu":
             minutes = int(request.form.get("minutes") or 0)
@@ -141,12 +143,11 @@ def zadat():
                 user_id=current_user.id
             )
             message = f"Série {set_number} uložena!"
-            next_set += 1
 
         db.session.add(novy_trenink)
         db.session.commit()
         flash(message)
-        # redirect s query stringem, aby při reloadu měl správný cvik a datum
+
         return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
     return render_template(

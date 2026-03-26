@@ -12,6 +12,61 @@
 <p style="color:green;">{{ message }}</p>
 {% endif %}
 
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 10px;
+        background-color: #f9f9f9;
+    }
+
+    form {
+        background-color: #fff;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 400px;
+        margin: auto;
+    }
+
+    label {
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    input, select, button {
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    button {
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        cursor: pointer;
+        margin-top: 5px;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-top: 15px;
+        padding: 5px 10px;
+        background-color: #ccc;
+        border-radius: 4px;
+        text-decoration: none;
+    }
+</style>
+
 <form method="POST">
     <label for="date">Datum:</label>
     <input type="date" id="date" name="date" required value="{{ today }}" onchange="updatePage()">
@@ -47,14 +102,11 @@
         <input type="number" step="0.1" id="incline" name="incline" min="0">
     </div>
 
-    <br>
     <button type="submit">Uložit</button>
 </form>
 
 <p>
-<a href="/" style="text-decoration:none; padding:5px 10px; background-color:#ccc; border-radius:4px;">
-Zpět
-</a>
+<a href="/" class="back-link">Zpět</a>
 </p>
 
 <script>

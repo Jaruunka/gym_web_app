@@ -5,6 +5,87 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Přidej na začátek nebo kamkoliv před route
+SILOVE_CVIKY = [
+    "Dřepy",
+    "Hip thrust",
+    "Benchpress",
+    "Rumuny",
+    "Bulhary",
+    "Abduction",
+    "Adduction",
+    "Kladivový zdvih",
+    "Hyper extension",
+    "Torso twist",
+    "Lat pullo down",
+    "Cable row"
+    "Triceps tlak",
+    "Cable wood chop",
+    "Běh na pásu"
+    # sem přidávej další cviky podle potřeby
+]
+
+@app.route("/zadat", methods=["GET", "POST"])
+@login_required
+def zadat():
+    date_val = request.form.get("date") or request.args.get("date") or date.today().isoformat()
+    exercise_val = request.form.get("exercise") or request.args.get("exercise") or SILOVE_CVIKY[0]
+    message = ""
+    next_set = 1
+
+    if exercise_val != "Běh na pásu":
+        count_sets = Workout.query.filter_by(
+            date=date_val,
+            exercise=exercise_val,
+            user_id=current_user.id
+        ).count()
+        next_set = count_sets + 1
+    else:
+        next_set = None
+
+    if request.method == "POST":
+        if exercise_val == "Běh na pásu":
+            minutes = int(request.form.get("minutes") or 0)
+            speed = float(request.form.get("speed") or 0)
+            incline = float(request.form.get("incline") or 0)
+            novy_trenink = Workout(
+                date=date_val,
+                exercise=exercise_val,
+                minutes=minutes,
+                speed=speed,
+                incline=incline,
+                user_id=current_user.id
+            )
+            message = "Kardio záznam uložen!"
+        else:
+            weight = int(request.form.get("weight") or 0)
+            reps = int(request.form.get("reps") or 0)
+            set_number = next_set
+            novy_trenink = Workout(
+                date=date_val,
+                exercise=exercise_val,
+                weight=weight,
+                reps=reps,
+                set_number=set_number,
+                user_id=current_user.id
+            )
+            message = f"Série {set_number} uložena!"
+            next_set += 1
+
+        db.session.add(novy_trenink)
+        db.session.commit()
+        flash(message)
+        return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
+
+    return render_template(
+        "zadat.html",
+        today=date_val,
+        exercise=exercise_val,
+        next_set=next_set,
+        message=message,
+        silove_cviky=SILOVE_CVIKY
+    )
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__, template_folder=os.path.join(basedir, "templates"))

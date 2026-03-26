@@ -18,12 +18,9 @@
 
     <label for="exercise">Cvik:</label>
     <select id="exercise" name="exercise" required onchange="updatePage(); toggleFields();">
-        <option value="Dřepy" {% if exercise == 'Dřepy' %}selected{% endif %}>Dřepy</option>
-        <option value="Hipthrusty" {% if exercise == 'Hipthrusty' %}selected{% endif %}>Hipthrusty</option>
-        <option value="Bulhary" {% if exercise == 'Bulhary' %}selected{% endif %}>Bulhary</option>
-        <option value="Tricepsový tlak" {% if exercise == 'Tricepsový tlak' %}selected{% endif %}>Tricepsový tlak</option>
-        <option value="Abduction" {% if exercise == 'Abduction' %}selected{% endif %}>Abduction</option>
-        <option value="Běh na pásu" {% if exercise == 'Běh na pásu' %}selected{% endif %}>Běh na pásu</option>
+        {% for cvik in silove_cviky %}
+        <option value="{{ cvik }}" {% if cvik == exercise %}selected{% endif %}>{{ cvik }}</option>
+        {% endfor %}
     </select>
 
     <!-- Silový trénink -->

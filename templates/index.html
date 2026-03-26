@@ -3,26 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <title>Gym App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+
+        a.button {
+            display: block;
+            padding: 25px 50px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            transition: background-color 0.2s;
+        }
+
+        a.button:hover {
+            background-color: #45a049;
+        }
+
+        .logout {
+            background-color: #f44336;
+        }
+
+        .logout:hover {
+            background-color: #da2e1a;
+        }
+
+        @media (max-width: 600px) {
+            a.button {
+                font-size: 1.2rem;
+                padding: 20px 30px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Vítej na Gym Web App</h1>
+    <div class="container">
+        <h1>Vítej na Gym Web App</h1>
 
-    {% if current_user.is_authenticated %}
-        <p>Jsi přihlášen jako {{ current_user.email }}.</p>
-        <nav>
-            <ul>
-                <li><a href="/zadat">Zadat nový trénink</a></li>
-                <li><a href="/historie">Historie tréninků</a></li>
-                <li><a href="{{ url_for('logout') }}">Odhlásit se</a></li>
-            </ul>
-        </nav>
-    {% else %}
-        <nav>
-            <ul>
-                <li><a href="{{ url_for('login') }}">Přihlásit se</a></li>
-                <li><a href="{{ url_for('register') }}">Registrovat</a></li>
-            </ul>
-        </nav>
-    {% endif %}
+        {% if current_user.is_authenticated %}
+            <p>Jsi přihlášen(a) jako {{ current_user.email }}.</p>
+            <a href="{{ url_for('zadat') }}" class="button">Zadat nový trénink</a>
+            <a href="{{ url_for('historie') }}" class="button">Historie tréninků</a>
+            <a href="{{ url_for('logout') }}" class="button logout">Odhlásit se</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="button">Přihlásit se</a>
+            <a href="{{ url_for('register') }}" class="button">Registrovat</a>
+        {% endif %}
+    </div>
 </body>
 </html>

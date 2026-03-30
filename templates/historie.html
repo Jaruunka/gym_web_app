@@ -1,88 +1,81 @@
 <!DOCTYPE html>
+
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
     <title>Historie tréninků</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 10px;
-            background-color: #f0f0f0;
-        }
 
-        .workout-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+```
+<style>
+    table {
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid black;
+        padding: 6px;
+        text-align: center;
+    }
+</style>
+```
 
-        .workout-card {
-            background-color: #fff;
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .workout-card p {
-            margin: 5px 0;
-        }
-
-        .actions {
-            margin-top: 10px;
-        }
-
-        .actions a {
-            text-decoration: none;
-            color: #007BFF;
-            margin-right: 10px;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-top: 15px;
-            padding: 5px 10px;
-            background-color: #ccc;
-            border-radius: 4px;
-            text-decoration: none;
-        }
-    </style>
 </head>
 <body>
 
-{% if current_user.is_authenticated %}
-    <p>Jsi přihlášen jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
-{% else %}
-    <p><a href="{{ url_for('login') }}">Přihlásit se</a> | <a href="{{ url_for('register') }}">Registrovat</a></p>
+{% if current_user.is_authenticated %} <p>Jsi přihlášen jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
+{% else %} <p> <a href="{{ url_for('login') }}">Přihlásit se</a> | <a href="{{ url_for('register') }}">Registrovat</a> </p>
 {% endif %}
 
 <h1>Historie tréninků</h1>
 
-<div class="workout-list">
-{% for w in workouts %}
-    <div class="workout-card">
-        <p><strong>Datum:</strong> {{ w.date }}</p>
-        <p><strong>Cvik:</strong> {{ w.exercise }}</p>
+<table>
+    <!-- HLAVIČKA 1 -->
+    <tr>
+        <th>Datum</th>
+        {% for ex in exercises %}
+            <th colspan="2">{{ ex }}</th>
+        {% endfor %}
+        <th>Akce</th>
+    </tr>
 
-        {% if w.exercise != "Běh na pásu" %}
-            <p><strong>Váha:</strong> {{ w.weight or '-' }} kg</p>
-            <p><strong>Opakování:</strong> {{ w.reps or '-' }}</p>
-            <p><strong>Série:</strong> {{ w.set_number or '-' }}</p>
-        {% else %}
-            <p><strong>Minuty:</strong> {{ w.minutes or '-' }}</p>
-            <p><strong>Rychlost:</strong> {{ w.speed or '-' }} km/h</p>
-            <p><strong>Stoupání:</strong> {{ w.incline or '-' }} %</p>
+```
+<!-- HLAVIČKA 2 -->
+<tr>
+    <th></th>
+    {% for ex in exercises %}
+        <th>váha</th>
+        <th>opakování</th>
+    {% endfor %}
+    <th></th>
+</tr>
+
+<!-- DATA -->
+{% for row in table_data %}
+<tr>
+    <td>{{ row.date }}</td>
+
+    {% for ex in exercises %}
+        <td>{{ row[ex ~ '_weight'] or '' }}</td>
+        <td>{{ row[ex ~ '_reps'] or '' }}</td>
+    {% endfor %}
+
+    <td>
+        {% if row.workout_ids %}
+            {% for wid in row.workout_ids %}
+                <a href="{{ url_for('edit_workout', workout_id=wid) }}">✏️</a>
+                <a href="{{ url_for('delete_workout', workout_id=wid) }}" onclick="return confirm('Smazat?')">🗑</a>
+            {% endfor %}
         {% endif %}
-
-        <div class="actions">
-            <a href="{{ url_for('edit_workout', workout_id=w.id) }}">Upravit</a> |
-            <a href="{{ url_for('delete_workout', workout_id=w.id) }}" onclick="return confirm('Opravdu smazat tento záznam?')">Smazat</a>
-        </div>
-    </div>
+    </td>
+</tr>
 {% endfor %}
-</div>
+```
 
-<a href="/" class="back-link">Zpět</a>
+</table>
+
+<br>
+<a href="/" style="text-decoration:none; padding:5px 10px; background-color:#ccc; border-radius:4px;">
+    Zpět
+</a>
 
 </body>
 </html>

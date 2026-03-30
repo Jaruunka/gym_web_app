@@ -1,5 +1,6 @@
 import os
 from datetime import date
+from collections import defaultdict
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
@@ -69,6 +70,43 @@ login_manager.login_view = "login"
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# --- FUNKCE PRO TRANSFORMACI WORKOUTŮ ---
+def transform_workouts(workouts):
+    grouped = defaultdict(list)
+    exercises = set()
+
+    # seskup podle data
+    for w in workouts:
+        grouped[w.date].append(w)
+        exercises.add(w.exercise)
+
+    exercises = sorted(exercises)
+    table_data = []
+
+    for date, items in grouped.items():
+        max_set = max((w.set_number or 1) for w in items)
+
+        for s in range(1, max_set + 1):
+            row = {"date": date if s == 1 else "", "workout_ids": []}
+
+            for ex in exercises:
+                found = next(
+                    (w for w in items if w.exercise == ex and (w.set_number or 1) == s),
+                    None
+                )
+
+                if found:
+                    row[f"{ex}_weight"] = found.weight if found.weight is not None else ""
+                    row[f"{ex}_reps"] = found.reps if found.reps is not None else ""
+                    row["workout_ids"].append(found.id)
+                else:
+                    row[f"{ex}_weight"] = ""
+                    row[f"{ex}_reps"] = ""
+
+            table_data.append(row)
+
+    return table_data, exercises
 
 # ROUTES
 @app.route("/")
@@ -179,10 +217,16 @@ def zadat():
 @app.route("/historie")
 @login_required
 def historie():
-    workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.id.desc()).all()
-    return render_template("historie.html", workouts=workouts)
+    workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.date.desc()).all()
 
-# --- Smazání záznamu ---
+    table_data, exercises = transform_workouts(workouts)
+
+    return render_template(
+        "historie.html",
+        table_data=table_data,
+        exercises=exercises
+    )
+
 @app.route("/delete/<int:workout_id>")
 @login_required
 def delete_workout(workout_id):
@@ -196,7 +240,6 @@ def delete_workout(workout_id):
     flash("Záznam smazán!")
     return redirect(url_for("historie"))
 
-# --- Úprava záznamu ---
 @app.route("/edit/<int:workout_id>", methods=["GET", "POST"], endpoint="edit_workout")
 @login_required
 def edit_workout(workout_id):
@@ -213,8 +256,6 @@ def edit_workout(workout_id):
             workout.minutes = int(request.form.get("minutes") or 0)
             workout.speed = float(request.form.get("speed") or 0)
             workout.incline = float(request.form.get("incline") or 0)
-
-            # vyčistit silové údaje
             workout.weight = None
             workout.reps = None
             workout.set_number = None
@@ -222,8 +263,6 @@ def edit_workout(workout_id):
             workout.weight = int(request.form.get("weight") or 0)
             workout.reps = int(request.form.get("reps") or 0)
             workout.set_number = int(request.form.get("set_number") or 1)
-
-            # vyčistit kardio údaje
             workout.minutes = None
             workout.speed = None
             workout.incline = None

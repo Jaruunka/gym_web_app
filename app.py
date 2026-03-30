@@ -1,28 +1,19 @@
 import os
 from datetime import date
 from collections import defaultdict
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+import pandas as pd
+import io
 
 # Seznam silových cviků + kardio
 SILOVE_CVIKY = [
-    "Dřepy",
-    "Hip thrust",
-    "Benchpress",
-    "Rumuny",
-    "Bulhary",
-    "Abduction",
-    "Adduction",
-    "Kladivový zdvih",
-    "Hyper extension",
-    "Torso twist",
-    "Lat pullo down",
-    "Cable row",
-    "Triceps tlak",
-    "Cable wood chop",
-    "Běh na pásu"
+    "Dřepy", "Hip thrust", "Benchpress", "Rumuny", "Bulhary",
+    "Abduction", "Adduction", "Kladivový zdvih", "Hyper extension",
+    "Torso twist", "Lat pullo down", "Cable row", "Triceps tlak",
+    "Cable wood chop", "Běh na pásu"
 ]
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -76,7 +67,6 @@ def transform_workouts(workouts):
     grouped = defaultdict(list)
     exercises = set()
 
-    # seskup podle data
     for w in workouts:
         grouped[w.date].append(w)
         exercises.add(w.exercise)
@@ -84,18 +74,12 @@ def transform_workouts(workouts):
     exercises = sorted(exercises)
     table_data = []
 
-    for date, items in grouped.items():
+    for date_val, items in grouped.items():
         max_set = max((w.set_number or 1) for w in items)
-
         for s in range(1, max_set + 1):
-            row = {"date": date if s == 1 else "", "workout_ids": []}
-
+            row = {"date": date_val if s == 1 else "", "workout_ids": []}
             for ex in exercises:
-                found = next(
-                    (w for w in items if w.exercise == ex and (w.set_number or 1) == s),
-                    None
-                )
-
+                found = next((w for w in items if w.exercise == ex and (w.set_number or 1) == s), None)
                 if found:
                     row[f"{ex}_weight"] = found.weight if found.weight is not None else ""
                     row[f"{ex}_reps"] = found.reps if found.reps is not None else ""
@@ -103,12 +87,11 @@ def transform_workouts(workouts):
                 else:
                     row[f"{ex}_weight"] = ""
                     row[f"{ex}_reps"] = ""
-
             table_data.append(row)
 
     return table_data, exercises
 
-# ROUTES
+# --- ROUTES ---
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -141,9 +124,8 @@ def login():
         if user and user.check_password(password):
             login_user(user)
             return redirect(url_for("index"))
-        else:
-            flash("Špatné údaje!")
-            return redirect(url_for("login"))
+        flash("Špatné údaje!")
+        return redirect(url_for("login"))
     return render_template("login.html")
 
 @app.route("/logout")
@@ -161,12 +143,9 @@ def zadat():
     message = ""
     next_set = 1
 
-    # --- určení další série ---
     if exercise_val != "Běh na pásu":
         last_set = Workout.query.filter_by(
-            date=date_val,
-            exercise=exercise_val,
-            user_id=current_user.id
+            date=date_val, exercise=exercise_val, user_id=current_user.id
         ).order_by(Workout.set_number.desc()).first()
         next_set = last_set.set_number + 1 if last_set and last_set.set_number else 1
     else:
@@ -178,27 +157,20 @@ def zadat():
             speed = float(request.form.get("speed") or 0)
             incline = float(request.form.get("incline") or 0)
             novy_trenink = Workout(
-                date=date_val,
-                exercise=exercise_val,
-                minutes=minutes,
-                speed=speed,
-                incline=incline,
+                date=date_val, exercise=exercise_val,
+                minutes=minutes, speed=speed, incline=incline,
                 user_id=current_user.id
             )
             message = "Kardio záznam uložen!"
         else:
             weight = int(request.form.get("weight") or 0)
             reps = int(request.form.get("reps") or 0)
-            set_number = next_set
             novy_trenink = Workout(
-                date=date_val,
-                exercise=exercise_val,
-                weight=weight,
-                reps=reps,
-                set_number=set_number,
-                user_id=current_user.id
+                date=date_val, exercise=exercise_val,
+                weight=weight, reps=reps,
+                set_number=next_set, user_id=current_user.id
             )
-            message = f"Série {set_number} uložena!"
+            message = f"Série {next_set} uložena!"
 
         db.session.add(novy_trenink)
         db.session.commit()
@@ -206,50 +178,27 @@ def zadat():
         return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
     return render_template(
-        "zadat.html",
-        today=date_val,
-        exercise=exercise_val,
-        next_set=next_set,
-        message=message,
-        silove_cviky=SILOVE_CVIKY
+        "zadat.html", today=date_val, exercise=exercise_val,
+        next_set=next_set, message=message, silove_cviky=SILOVE_CVIKY
     )
 
 @app.route("/historie")
 @login_required
 def historie():
     workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.date.desc()).all()
-
     table_data, exercises = transform_workouts(workouts)
-
-    return render_template(
-        "historie.html",
-        table_data=table_data,
-        exercises=exercises
-    )
+    return render_template("historie.html", table_data=table_data, exercises=exercises)
 
 @app.route("/export_excel")
 @login_required
 def export_excel():
-    # vezmi všechny tréninky aktuálně přihlášeného uživatele
     workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.date.asc()).all()
-    
-    # transformuj data stejně jako do tabulky historie
     table_data, exercises = transform_workouts(workouts)
-    
-    import pandas as pd
-    import io
-    from flask import send_file
-
-    # vytvoříme DataFrame z transformovaných dat
     df = pd.DataFrame(table_data)
-    
-    # uložíme do paměti, ne na disk
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name="Workouts")
     output.seek(0)
-
-    # pošleme jako soubor ke stažení
     return send_file(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -264,7 +213,6 @@ def delete_workout(workout_id):
     if workout.user_id != current_user.id:
         flash("Nemáš oprávnění mazat tento záznam!")
         return redirect(url_for("historie"))
-
     db.session.delete(workout)
     db.session.commit()
     flash("Záznam smazán!")
@@ -281,7 +229,6 @@ def edit_workout(workout_id):
     if request.method == "POST":
         workout.date = request.form.get("date")
         workout.exercise = request.form.get("exercise")
-
         if workout.exercise == "Běh na pásu":
             workout.minutes = int(request.form.get("minutes") or 0)
             workout.speed = float(request.form.get("speed") or 0)

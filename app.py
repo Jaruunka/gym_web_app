@@ -227,6 +227,36 @@ def historie():
         exercises=exercises
     )
 
+@app.route("/export_excel")
+@login_required
+def export_excel():
+    # vezmi všechny tréninky aktuálně přihlášeného uživatele
+    workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.date.asc()).all()
+    
+    # transformuj data stejně jako do tabulky historie
+    table_data, exercises = transform_workouts(workouts)
+    
+    import pandas as pd
+    import io
+    from flask import send_file
+
+    # vytvoříme DataFrame z transformovaných dat
+    df = pd.DataFrame(table_data)
+    
+    # uložíme do paměti, ne na disk
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name="Workouts")
+    output.seek(0)
+
+    # pošleme jako soubor ke stažení
+    return send_file(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        download_name="workouts.xlsx",
+        as_attachment=True
+    )
+
 @app.route("/delete/<int:workout_id>")
 @login_required
 def delete_workout(workout_id):

@@ -12,7 +12,7 @@ import io
 SILOVE_CVIKY = [
     "Dřepy", "Hip thrust", "Benchpress", "Rumuny", "Bulhary",
     "Abduction", "Adduction", "Kladivový zdvih", "Hyper extension",
-    "Torso twist", "Lat pullo down", "Cable row", "Triceps tlak",
+    "Torso twist", "Lat pull down", "Cable row", "Leg press", "Shyb", "Triceps tlak",
     "Cable wood chop", "Běh na pásu"
 ]
 

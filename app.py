@@ -46,7 +46,7 @@ class Workout(db.Model):
     date = db.Column(db.String(20))
     exercise = db.Column(db.String(100))
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    weight = db.Column(db.Integer, nullable=True)
+    weight = db.Column(db.Float, nullable=True)  # Float místo int
     reps = db.Column(db.Integer, nullable=True)
     set_number = db.Column(db.Integer, nullable=True)
     minutes = db.Column(db.Integer, nullable=True)
@@ -140,14 +140,26 @@ def logout():
 def zadat():
     date_val = request.form.get("date") or request.args.get("date") or date.today().isoformat()
     exercise_val = request.form.get("exercise") or request.args.get("exercise") or SILOVE_CVIKY[0]
+
     message = ""
     next_set = 1
+    last_weight = ""
 
     if exercise_val != "Běh na pásu":
-        last_set = Workout.query.filter_by(
+        # poslední série v dnešním tréninku
+        last_set_today = Workout.query.filter_by(
             date=date_val, exercise=exercise_val, user_id=current_user.id
         ).order_by(Workout.set_number.desc()).first()
-        next_set = last_set.set_number + 1 if last_set and last_set.set_number else 1
+
+        next_set = last_set_today.set_number + 1 if last_set_today and last_set_today.set_number else 1
+
+        # poslední váha napříč všemi tréninky
+        last_set_ever = Workout.query.filter_by(
+            exercise=exercise_val, user_id=current_user.id
+        ).order_by(Workout.id.desc()).first()
+
+        if last_set_ever and last_set_ever.weight:
+            last_weight = last_set_ever.weight
     else:
         next_set = None
 
@@ -163,7 +175,7 @@ def zadat():
             )
             message = "Kardio záznam uložen!"
         else:
-            weight = int(request.form.get("weight") or 0)
+            weight = float(request.form.get("weight") or 0)
             reps = int(request.form.get("reps") or 0)
             novy_trenink = Workout(
                 date=date_val, exercise=exercise_val,
@@ -179,7 +191,8 @@ def zadat():
 
     return render_template(
         "zadat.html", today=date_val, exercise=exercise_val,
-        next_set=next_set, message=message, silove_cviky=SILOVE_CVIKY
+        next_set=next_set, message=message, silove_cviky=SILOVE_CVIKY,
+        last_weight=last_weight
     )
 
 @app.route("/historie")
@@ -237,7 +250,7 @@ def edit_workout(workout_id):
             workout.reps = None
             workout.set_number = None
         else:
-            workout.weight = int(request.form.get("weight") or 0)
+            workout.weight = float(request.form.get("weight") or 0)
             workout.reps = int(request.form.get("reps") or 0)
             workout.set_number = int(request.form.get("set_number") or 1)
             workout.minutes = None

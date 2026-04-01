@@ -1,4 +1,65 @@
-<body onload="toggleFields()">
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zadat trénink</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px;
+            background-color: #f9f9f9;
+        }
+
+        form {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 400px;
+            margin: auto;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        input, select, button {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 5px 10px;
+            background-color: #ccc;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
 
 <h1>Zadat trénink</h1>
 
@@ -11,61 +72,6 @@
 {% if message %}
 <p style="color:green;">{{ message }}</p>
 {% endif %}
-
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 10px;
-        background-color: #f9f9f9;
-    }
-
-    form {
-        background-color: #fff;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        max-width: 400px;
-        margin: auto;
-    }
-
-    label {
-        font-weight: bold;
-        margin-bottom: 4px;
-    }
-
-    input, select, button {
-        padding: 10px;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        font-size: 16px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    button {
-        background-color: #007BFF;
-        color: white;
-        border: none;
-        cursor: pointer;
-        margin-top: 5px;
-    }
-
-    button:hover {
-        background-color: #0056b3;
-    }
-
-    .back-link {
-        display: inline-block;
-        margin-top: 15px;
-        padding: 5px 10px;
-        background-color: #ccc;
-        border-radius: 4px;
-        text-decoration: none;
-    }
-</style>
 
 <form method="POST">
     <label for="date">Datum:</label>
@@ -81,10 +87,23 @@
     <!-- Silový trénink -->
     <div id="strength_fields">
         <label for="weight">Váha (kg):</label>
-        <input type="number" id="weight" name="weight" min="0">
+        <input 
+            type="text" 
+            id="weight" 
+            name="weight" 
+            value="{{ last_weight }}"
+            inputmode="decimal"
+            placeholder="kg"
+        >
 
         <label for="reps">Opakování:</label>
-        <input type="number" id="reps" name="reps" min="1">
+        <input 
+            type="text" 
+            id="reps" 
+            name="reps" 
+            inputmode="numeric"
+            placeholder="opakování"
+        >
 
         <label for="set">Série:</label>
         <input type="number" id="set" name="set" value="{{ next_set or 1 }}" readonly>
@@ -123,12 +142,23 @@ function toggleFields() {
     }
 }
 
-// reload stránky při změně cviku nebo data
 function updatePage() {
     let date = document.getElementById("date").value;
     let exercise = document.getElementById("exercise").value;
     window.location.href = `/zadat?date=${date}&exercise=${exercise}`;
 }
-</script>
 
+// Autofocus na reps při načtení (jen u silového tréninku)
+window.onload = function () {
+    toggleFields();
+    let exercise = document.getElementById("exercise").value;
+    if (exercise !== "Běh na pásu") {
+        let repsInput = document.getElementById("reps");
+        if (repsInput) {
+            repsInput.focus();
+        }
+    }
+};
+</script>
 </body>
+</html>

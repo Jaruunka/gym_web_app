@@ -7,6 +7,7 @@ from flask_login import UserMixin, LoginManager, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
 import io
+from flask_migrate import Migrate
 
 # Seznam silových cviků + kardio
 SILOVE_CVIKY = [
@@ -28,6 +29,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = db_url or "sqlite:///" + os.path.join(ba
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # MODELY
 class User(db.Model, UserMixin):
@@ -46,12 +48,13 @@ class Workout(db.Model):
     date = db.Column(db.String(20))
     exercise = db.Column(db.String(100))
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    weight = db.Column(db.Float, nullable=True)  # Float místo int
+    weight = db.Column(db.Integer, nullable=True)
     reps = db.Column(db.Integer, nullable=True)
     set_number = db.Column(db.Integer, nullable=True)
     minutes = db.Column(db.Integer, nullable=True)
     speed = db.Column(db.Float, nullable=True)
     incline = db.Column(db.Float, nullable=True)
+    band_color = db.Column(db.String(50), nullable=True)  # nově
 
 # LOGIN MANAGER
 login_manager = LoginManager()
@@ -146,14 +149,12 @@ def zadat():
     last_weight = ""
 
     if exercise_val != "Běh na pásu":
-        # poslední série v dnešním tréninku
         last_set_today = Workout.query.filter_by(
             date=date_val, exercise=exercise_val, user_id=current_user.id
         ).order_by(Workout.set_number.desc()).first()
 
         next_set = last_set_today.set_number + 1 if last_set_today and last_set_today.set_number else 1
 
-        # poslední váha napříč všemi tréninky
         last_set_ever = Workout.query.filter_by(
             exercise=exercise_val, user_id=current_user.id
         ).order_by(Workout.id.desc()).first()
@@ -177,10 +178,16 @@ def zadat():
         else:
             weight = float(request.form.get("weight") or 0)
             reps = int(request.form.get("reps") or 0)
+            band_color = request.form.get("band_color") if exercise_val == "Shyb" else None
+
             novy_trenink = Workout(
-                date=date_val, exercise=exercise_val,
-                weight=weight, reps=reps,
-                set_number=next_set, user_id=current_user.id
+                date=date_val,
+                exercise=exercise_val,
+                weight=weight,
+                reps=reps,
+                set_number=next_set,
+                user_id=current_user.id,
+                band_color=band_color
             )
             message = f"Série {next_set} uložena!"
 
@@ -249,10 +256,12 @@ def edit_workout(workout_id):
             workout.weight = None
             workout.reps = None
             workout.set_number = None
+            workout.band_color = None
         else:
             workout.weight = float(request.form.get("weight") or 0)
             workout.reps = int(request.form.get("reps") or 0)
             workout.set_number = int(request.form.get("set_number") or 1)
+            workout.band_color = request.form.get("band_color") if workout.exercise == "Shyb" else None
             workout.minutes = None
             workout.speed = None
             workout.incline = None
@@ -262,10 +271,6 @@ def edit_workout(workout_id):
         return redirect(url_for("historie"))
 
     return render_template("edit_workout.html", workout=workout, silove_cviky=SILOVE_CVIKY)
-
-# CREATE DB
-with app.app_context():
-    db.create_all()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

@@ -107,6 +107,12 @@
 
         <label for="set">Série:</label>
         <input type="number" id="set" name="set" value="{{ next_set or 1 }}" readonly>
+
+        <!-- Barva gumy jen pro Shyb -->
+        <div id="band_color_field" style="display:none;">
+            <label for="band_color">Barva gumy:</label>
+            <input type="text" id="band_color" name="band_color" placeholder="např. červená, modrá">
+        </div>
     </div>
 
     <!-- Kardio trénink -->
@@ -133,12 +139,16 @@ function toggleFields() {
     let exercise = document.getElementById("exercise").value;
     let strength = document.getElementById("strength_fields");
     let cardio = document.getElementById("cardio_fields");
+    let bandField = document.getElementById("band_color_field");
+
     if (exercise === "Běh na pásu") {
         strength.style.display = "none";
         cardio.style.display = "block";
+        bandField.style.display = "none";
     } else {
         strength.style.display = "block";
         cardio.style.display = "none";
+        bandField.style.display = (exercise === "Shyb") ? "block" : "none";
     }
 }
 
@@ -154,9 +164,7 @@ window.onload = function () {
     let exercise = document.getElementById("exercise").value;
     if (exercise !== "Běh na pásu") {
         let repsInput = document.getElementById("reps");
-        if (repsInput) {
-            repsInput.focus();
-        }
+        if (repsInput) repsInput.focus();
     }
 };
 </script>

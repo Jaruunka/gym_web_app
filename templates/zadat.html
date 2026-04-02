@@ -86,7 +86,7 @@
 
     <!-- Silový trénink -->
     <div id="strength_fields">
-        <label for="weight">Váha (kg):</label>
+        <label for="weight" id="weight_label">Váha (kg):</label>
         <input 
             type="text" 
             id="weight" 
@@ -140,15 +140,25 @@ function toggleFields() {
     let strength = document.getElementById("strength_fields");
     let cardio = document.getElementById("cardio_fields");
     let bandField = document.getElementById("band_color_field");
+    let weightField = document.getElementById("weight");
+    let weightLabel = document.getElementById("weight_label");
 
     if (exercise === "Běh na pásu") {
         strength.style.display = "none";
         cardio.style.display = "block";
         bandField.style.display = "none";
+    } else if (exercise === "Shyb") {
+        strength.style.display = "block";
+        cardio.style.display = "none";
+        bandField.style.display = "block";
+        weightField.style.display = "none";
+        weightLabel.style.display = "none";
     } else {
         strength.style.display = "block";
         cardio.style.display = "none";
-        bandField.style.display = (exercise === "Shyb") ? "block" : "none";
+        bandField.style.display = "none";
+        weightField.style.display = "block";
+        weightLabel.style.display = "block";
     }
 }
 
@@ -162,7 +172,7 @@ function updatePage() {
 window.onload = function () {
     toggleFields();
     let exercise = document.getElementById("exercise").value;
-    if (exercise !== "Běh na pásu") {
+    if (exercise !== "Běh na pásu" && exercise !== "Shyb") {
         let repsInput = document.getElementById("reps");
         if (repsInput) repsInput.focus();
     }

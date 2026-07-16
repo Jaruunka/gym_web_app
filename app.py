@@ -41,15 +41,7 @@ migrate = Migrate(app, db)
 
 # MODELY
 
-
-class Workout(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.String(20))
-    exercise = db.Column(db.String(100))
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    weight = db.Column(db.Integer, nullable=True)
-    reps = db.Column(db.Integer, nullable=True)
-    set_number = db.Columnclass User(db.Model, UserMixin):
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
@@ -61,11 +53,21 @@ class Workout(db.Model):
         )
 
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)(db.Integer, nullable=True)
+        return check_password_hash(self.password_hash, password)
+
+
+class Workout(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String(20))
+    exercise = db.Column(db.String(100))
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    weight = db.Column(db.Integer, nullable=True)
+    reps = db.Column(db.Integer, nullable=True)
+    set_number = db.Column(db.Integer, nullable=True)
     minutes = db.Column(db.Integer, nullable=True)
     speed = db.Column(db.Float, nullable=True)
     incline = db.Column(db.Float, nullable=True)
-    band_color = db.Column(db.String(50), nullable=True)  # nově
+    band_color = db.Column(db.String(50), nullable=True)
 
 # LOGIN MANAGER
 login_manager = LoginManager()

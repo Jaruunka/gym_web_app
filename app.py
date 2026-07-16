@@ -40,19 +40,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # MODELY
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    password_hash = db.Column(db.String(200), nullable=False)
 
-    def set_password(self, password):
-    self.password_hash = generate_password_hash(
-        password,
-        method="pbkdf2:sha256"
-    )
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
 
 class Workout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,7 +49,19 @@ class Workout(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     weight = db.Column(db.Integer, nullable=True)
     reps = db.Column(db.Integer, nullable=True)
-    set_number = db.Column(db.Integer, nullable=True)
+    set_number = db.Columnclass User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(
+        password,
+        method="pbkdf2:sha256"
+    )
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)(db.Integer, nullable=True)
     minutes = db.Column(db.Integer, nullable=True)
     speed = db.Column(db.Float, nullable=True)
     incline = db.Column(db.Float, nullable=True)

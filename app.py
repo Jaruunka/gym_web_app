@@ -61,7 +61,7 @@ class Workout(db.Model):
     date = db.Column(db.String(20))
     exercise = db.Column(db.String(100))
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    weight = db.Column(db.Integer, nullable=True)
+    weight = db.Column(db.Float, nullable=True)
     reps = db.Column(db.Integer, nullable=True)
     set_number = db.Column(db.Integer, nullable=True)
     minutes = db.Column(db.Integer, nullable=True)

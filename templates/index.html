@@ -2,39 +2,50 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gym App</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 0;
+            min-height: 100vh;
             display: flex;
-            height: 100vh;
             justify-content: center;
             align-items: center;
             background-color: #f4f4f4;
         }
 
         .container {
+            width: 100%;
+            max-width: 550px;
+            padding: 20px;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 18px;
             text-align: center;
         }
 
         h1 {
-            margin-bottom: 30px;
+            margin: 0 0 20px;
             font-size: 2rem;
         }
 
         a.button {
-            display: block;
-            padding: 25px 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            min-height: 85px;
+            padding: 15px;
+            box-sizing: border-box;
             background-color: #4CAF50;
             color: white;
             text-decoration: none;
-            border-radius: 10px;
-            font-size: 1.5rem;
+            border-radius: 12px;
+            font-size: 1.4rem;
+            font-weight: bold;
             transition: background-color 0.2s;
         }
 
@@ -42,42 +53,66 @@
             background-color: #45a049;
         }
 
-        .logout {
+        a.button:active {
+            transform: scale(0.98);
+        }
+
+        a.logout {
             background-color: #f44336;
         }
 
-        .logout:hover {
+        a.logout:hover {
             background-color: #da2e1a;
         }
 
         @media (max-width: 600px) {
-            a.button {
-                font-size: 1.2rem;
-                padding: 20px 30px;
+            .container {
+                max-width: none;
+                padding: 16px;
             }
 
             h1 {
-                font-size: 1.5rem;
+                font-size: 1.7rem;
+            }
+
+            a.button {
+                min-height: 95px;
+                font-size: 1.35rem;
             }
         }
     </style>
 
     {% include '_pwa_head.html' %}
 </head>
+
 <body>
     <div class="container">
         <h1>Vítej na Gym Web App</h1>
 
         {% if current_user.is_authenticated %}
             <p>Jsi přihlášen(a) jako {{ current_user.email }}.</p>
-            <a href="{{ url_for('zadat') }}" class="button">Zadat nový trénink</a>
-            <a href="{{ url_for('historie') }}" class="button">Historie tréninků</a>
-            <a href="{{ url_for('logout') }}" class="button logout">Odhlásit se</a>
+
+            <a href="{{ url_for('zadat') }}" class="button">
+                Zadat nový trénink
+            </a>
+
+            <a href="{{ url_for('historie') }}" class="button">
+                Historie tréninků
+            </a>
+
+            <a href="{{ url_for('logout') }}" class="button logout">
+                Odhlásit se
+            </a>
         {% else %}
-            <a href="{{ url_for('login') }}" class="button">Přihlásit se</a>
-            <a href="{{ url_for('register') }}" class="button">Registrovat</a>
+            <a href="{{ url_for('login') }}" class="button">
+                Přihlásit se
+            </a>
+
+            <a href="{{ url_for('register') }}" class="button">
+                Registrovat
+            </a>
         {% endif %}
-     </div>
+    </div>
 
     {% include '_pwa_scripts.html' %}
 </body>

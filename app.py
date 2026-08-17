@@ -92,17 +92,50 @@ def transform_workouts(workouts):
 
     for date_val, items in grouped.items():
         max_set = max((w.set_number or 1) for w in items)
+
         for s in range(1, max_set + 1):
-            row = {"date": date_val if s == 1 else "", "workout_ids": []}
+            row = {
+                "date": date_val if s == 1 else "",
+                "workout_actions": []
+            }
+
             for ex in exercises:
-                found = next((w for w in items if w.exercise == ex and (w.set_number or 1) == s), None)
+                found = next(
+                    (
+                        w for w in items
+                        if w.exercise == ex
+                        and (w.set_number or 1) == s
+                    ),
+                    None
+                )
+
                 if found:
-                    row[f"{ex}_weight"] = found.weight if found.weight is not None else ""
-                    row[f"{ex}_reps"] = found.reps if found.reps is not None else ""
-                    row["workout_ids"].append(found.id)
+                    row[f"{ex}_weight"] = (
+                        found.weight if found.weight is not None else ""
+                    )
+                    row[f"{ex}_reps"] = (
+                        found.reps if found.reps is not None else ""
+                    )
+
+                    if found.exercise == "Běh na pásu":
+                        action_label = (
+                            f"{found.exercise} – "
+                            f"{found.minutes or 0} min"
+                        )
+                    else:
+                        action_label = (
+                            f"{found.exercise} – série "
+                            f"{found.set_number or 1}"
+                        )
+
+                    row["workout_actions"].append({
+                        "id": found.id,
+                        "label": action_label
+                    })
                 else:
                     row[f"{ex}_weight"] = ""
                     row[f"{ex}_reps"] = ""
+
             table_data.append(row)
 
     return table_data, exercises

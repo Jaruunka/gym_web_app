@@ -14,6 +14,7 @@
         .table-wrapper {
             width: 100%;
             overflow-x: auto;
+            padding-bottom: 130px;
         }
 
         table {
@@ -49,10 +50,57 @@
             color: black;
         }
 
-        .action-link {
-            display: inline-block;
-            padding: 3px;
+        .actions {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .action-menu {
+            position: relative;
+        }
+
+        .action-menu summary {
+            padding: 4px;
+            cursor: pointer;
+            list-style: none;
+            font-size: 18px;
+        }
+
+        .action-menu summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .action-list {
+            position: absolute;
+            top: 32px;
+            right: 0;
+            z-index: 10;
+            min-width: 190px;
+            padding: 8px;
+            background-color: white;
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            text-align: left;
+        }
+
+        .action-list a {
+            display: block;
+            padding: 8px;
+            color: black;
             text-decoration: none;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .action-list a:hover {
+            background-color: #eee;
+        }
+
+        .delete-list a {
+            color: #c00000;
         }
     </style>
 
@@ -61,93 +109,111 @@
 
 <body>
 
-    {% if current_user.is_authenticated %}
-        <p>
-            Jsi přihlášen(a) jako {{ current_user.email }}.
-            <a href="{{ url_for('logout') }}">Odhlásit se</a>
-        </p>
-    {% else %}
-        <p>
-            <a href="{{ url_for('login') }}">Přihlásit se</a> |
-            <a href="{{ url_for('register') }}">Registrovat</a>
-        </p>
-    {% endif %}
+{% if current_user.is_authenticated %}
+    <p>
+        Jsi přihlášen(a) jako {{ current_user.email }}.
+        <a href="{{ url_for('logout') }}">Odhlásit se</a>
+    </p>
+{% else %}
+    <p>
+        <a href="{{ url_for('login') }}">Přihlásit se</a> |
+        <a href="{{ url_for('register') }}">Registrovat</a>
+    </p>
+{% endif %}
 
-    <h1>Historie tréninků</h1>
+<h1>Historie tréninků</h1>
 
-    <form action="{{ url_for('export_excel') }}" method="get">
-        <button type="submit">Export do Excelu</button>
-    </form>
+<form action="{{ url_for('export_excel') }}" method="get">
+    <button type="submit">Export do Excelu</button>
+</form>
 
-    <br>
+<br>
 
-    <div class="table-wrapper">
-        <table>
-            <!-- První řádek hlavičky -->
-            <tr>
-                <th>Datum</th>
+<div class="table-wrapper">
+    <table>
+        <tr>
+            <th>Datum</th>
 
-                {% for ex in exercises %}
-                    <th colspan="2">{{ ex }}</th>
-                {% endfor %}
-
-                <th>Akce</th>
-            </tr>
-
-            <!-- Druhý řádek hlavičky -->
-            <tr>
-                <th></th>
-
-                {% for ex in exercises %}
-                    <th>Váha</th>
-                    <th>Opakování</th>
-                {% endfor %}
-
-                <th></th>
-            </tr>
-
-            <!-- Data -->
-            {% for row in table_data %}
-                <tr>
-                    <td>{{ row.date }}</td>
-
-                    {% for ex in exercises %}
-                        <td>
-                            {{ row[ex ~ '_weight'] if row[ex ~ '_weight'] is not none else '' }}
-                        </td>
-
-                        <td>
-                            {{ row[ex ~ '_reps'] if row[ex ~ '_reps'] is not none else '' }}
-                        </td>
-                    {% endfor %}
-
-                    <td>
-                        {% if row.workout_ids %}
-                            {% for wid in row.workout_ids %}
-                                <a
-                                    class="action-link"
-                                    href="{{ url_for('edit_workout', workout_id=wid) }}"
-                                    aria-label="Upravit záznam"
-                                >✏️</a>
-
-                                <a
-                                    class="action-link"
-                                    href="{{ url_for('delete_workout', workout_id=wid) }}"
-                                    onclick="return confirm('Opravdu chceš tento záznam smazat?')"
-                                    aria-label="Smazat záznam"
-                                >🗑️</a>
-                            {% endfor %}
-                        {% endif %}
-                    </td>
-                </tr>
+            {% for ex in exercises %}
+                <th colspan="2">{{ ex }}</th>
             {% endfor %}
-        </table>
-    </div>
 
-    <br>
+            <th>Akce</th>
+        </tr>
 
-    <a href="/" class="back-link">Zpět</a>
+        <tr>
+            <th></th>
 
-    {% include '_pwa_scripts.html' %}
+            {% for ex in exercises %}
+                <th>Váha</th>
+                <th>Opakování</th>
+            {% endfor %}
+
+            <th></th>
+        </tr>
+
+        {% for row in table_data %}
+            <tr>
+                <td>{{ row.date }}</td>
+
+                {% for ex in exercises %}
+                    <td>
+                        {{ row[ex ~ '_weight'] if row[ex ~ '_weight'] is not none else '' }}
+                    </td>
+                    <td>
+                        {{ row[ex ~ '_reps'] if row[ex ~ '_reps'] is not none else '' }}
+                    </td>
+                {% endfor %}
+
+                <td>
+                    {% if row.workout_actions %}
+                        <div class="actions">
+
+                            <details class="action-menu">
+                                <summary title="Upravit">✏️</summary>
+
+                                <div class="action-list">
+                                    {% for action in row.workout_actions %}
+                                        <a href="{{ url_for(
+                                            'edit_workout',
+                                            workout_id=action.id
+                                        ) }}">
+                                            {{ action.label }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </details>
+
+                            <details class="action-menu">
+                                <summary title="Smazat">🗑️</summary>
+
+                                <div class="action-list delete-list">
+                                    {% for action in row.workout_actions %}
+                                        <a
+                                            href="{{ url_for(
+                                                'delete_workout',
+                                                workout_id=action.id
+                                            ) }}"
+                                            onclick="return confirm(
+                                                'Opravdu chceš smazat: {{ action.label }}?'
+                                            )"
+                                        >
+                                            {{ action.label }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </details>
+
+                        </div>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<a href="/" class="back-link">Zpět</a>
+
+{% include '_pwa_scripts.html' %}
 </body>
 </html>

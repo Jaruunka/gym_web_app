@@ -2,75 +2,157 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upravit záznam</title>
+
+    {% include '_pwa_head.html' %}
 </head>
+
 <body>
 
 {% if current_user.is_authenticated %}
-    <p>Jsi přihlášen jako {{ current_user.email }}. <a href="{{ url_for('logout') }}">Odhlásit se</a></p>
+    <p>
+        Jsi přihlášen(a) jako {{ current_user.email }}.
+        <a href="{{ url_for('logout') }}">Odhlásit se</a>
+    </p>
 {% endif %}
 
 <h1>Upravit záznam</h1>
 
 <form method="POST">
     <label for="date">Datum:</label>
-    <input type="date" id="date" name="date" required value="{{ workout.date }}">
+    <input
+        type="date"
+        id="date"
+        name="date"
+        required
+        value="{{ workout.date }}"
+    >
+
+    <br><br>
 
     <label for="exercise">Cvik:</label>
-    <select id="exercise" name="exercise" required onchange="toggleFields()">
+    <select
+        id="exercise"
+        name="exercise"
+        required
+        onchange="toggleFields()"
+    >
         {% for cvik in silove_cviky %}
-            <option value="{{ cvik }}" {% if cvik == workout.exercise %}selected{% endif %}>{{ cvik }}</option>
+            <option
+                value="{{ cvik }}"
+                {% if cvik == workout.exercise %}selected{% endif %}
+            >
+                {{ cvik }}
+            </option>
         {% endfor %}
     </select>
+
+    <br><br>
 
     <!-- Silový trénink -->
     <div id="strength_fields">
         <label for="weight">Váha (kg):</label>
-        <input type="number" id="weight" name="weight" min="0" value="{{ workout.weight or '' }}">
+        <input
+            type="number"
+            step="0.1"
+            id="weight"
+            name="weight"
+            min="0"
+            value="{{ workout.weight or '' }}"
+        >
+
+        <br><br>
 
         <label for="reps">Opakování:</label>
-        <input type="number" id="reps" name="reps" min="1" value="{{ workout.reps or '' }}">
+        <input
+            type="number"
+            id="reps"
+            name="reps"
+            min="1"
+            value="{{ workout.reps or '' }}"
+        >
+
+        <br><br>
 
         <label for="set_number">Série:</label>
-        <input type="number" id="set_number" name="set_number" value="{{ workout.set_number or 1 }}">
+        <input
+            type="number"
+            id="set_number"
+            name="set_number"
+            min="1"
+            value="{{ workout.set_number or 1 }}"
+        >
     </div>
 
     <!-- Kardio trénink -->
     <div id="cardio_fields">
         <label for="minutes">Čas (min):</label>
-        <input type="number" id="minutes" name="minutes" min="1" value="{{ workout.minutes or '' }}">
+        <input
+            type="number"
+            id="minutes"
+            name="minutes"
+            min="1"
+            value="{{ workout.minutes or '' }}"
+        >
+
+        <br><br>
 
         <label for="speed">Rychlost (km/h):</label>
-        <input type="number" step="0.1" id="speed" name="speed" min="0" value="{{ workout.speed or '' }}">
+        <input
+            type="number"
+            step="0.1"
+            id="speed"
+            name="speed"
+            min="0"
+            value="{{ workout.speed or '' }}"
+        >
+
+        <br><br>
 
         <label for="incline">Stoupání (%):</label>
-        <input type="number" step="0.1" id="incline" name="incline" min="0" value="{{ workout.incline or '' }}">
+        <input
+            type="number"
+            step="0.1"
+            id="incline"
+            name="incline"
+            min="0"
+            value="{{ workout.incline or '' }}"
+        >
     </div>
 
     <br>
+
     <button type="submit">Uložit změny</button>
 </form>
 
 <br>
-<a href="{{ url_for('historie') }}" style="text-decoration:none; padding:5px 10px; background-color:#ccc; border-radius:4px;">Zpět na historii</a>
+
+<a
+    href="{{ url_for('historie') }}"
+    style="text-decoration: none; padding: 5px 10px; background-color: #ccc; border-radius: 4px;"
+>
+    Zpět na historii
+</a>
 
 <script>
-function toggleFields() {
-    let exercise = document.getElementById("exercise").value;
-    let strength = document.getElementById("strength_fields");
-    let cardio = document.getElementById("cardio_fields");
-    if (exercise === "Běh na pásu") {
-        strength.style.display = "none";
-        cardio.style.display = "block";
-    } else {
-        strength.style.display = "block";
-        cardio.style.display = "none";
-    }
-}
+    function toggleFields() {
+        const exercise = document.getElementById("exercise").value;
+        const strength = document.getElementById("strength_fields");
+        const cardio = document.getElementById("cardio_fields");
 
-// inicializace při načtení stránky
-window.onload = toggleFields;
+        if (exercise === "Běh na pásu") {
+            strength.style.display = "none";
+            cardio.style.display = "block";
+        } else {
+            strength.style.display = "block";
+            cardio.style.display = "none";
+        }
+    }
+
+    window.addEventListener("load", toggleFields);
 </script>
 
+{% include '_pwa_scripts.html' %}
 </body>
 </html>

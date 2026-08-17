@@ -61,6 +61,8 @@
             }
         }
     </style>
+
+    {% include '_pwa_head.html' %}
 </head>
 <body>
     <div class="container">
@@ -75,6 +77,8 @@
             <a href="{{ url_for('login') }}" class="button">Přihlásit se</a>
             <a href="{{ url_for('register') }}" class="button">Registrovat</a>
         {% endif %}
-    </div>
+     </div>
+
+    {% include '_pwa_scripts.html' %}
 </body>
 </html>

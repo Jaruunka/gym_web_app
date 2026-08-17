@@ -2,29 +2,37 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Přihlášení</title>
+
+    {% include '_pwa_head.html' %}
 </head>
+
 <body>
     <h1>Přihlášení</h1>
 
     {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul style="color: red;">
-          {% for message in messages %}
-            <li>{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
+        {% if messages %}
+            <ul style="color: red;">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
     {% endwith %}
 
     <form method="POST">
         <label>Email:</label>
-        <input type="email" name="email" required><br><br>
+        <input type="email" name="email" required>
+        <br><br>
 
         <label>Heslo:</label>
-        <input type="password" name="password" required><br><br>
+        <input type="password" name="password" required>
+        <br><br>
 
         <button type="submit">Přihlásit se</button>
     </form>
+
+    {% include '_pwa_scripts.html' %}
 </body>
 </html>

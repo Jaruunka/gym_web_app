@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from collections import defaultdict
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -61,7 +61,7 @@ class Workout(db.Model):
     date = db.Column(db.String(20))
     exercise = db.Column(db.String(100))
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    weight = db.Column(db.Float, nullable=True)
+    weight = db.Column(db.Integer, nullable=True)
     reps = db.Column(db.Integer, nullable=True)
     set_number = db.Column(db.Integer, nullable=True)
     minutes = db.Column(db.Integer, nullable=True)
@@ -284,19 +284,6 @@ def edit_workout(workout_id):
         return redirect(url_for("historie"))
 
     return render_template("edit_workout.html", workout=workout, silove_cviky=SILOVE_CVIKY)
-
-@app.route('/service-worker.js')
-def service_worker():
-    return send_from_directory(
-        'static',
-        'service-worker.js',
-        mimetype='application/javascript'
-    )
-
-
-@app.route('/pwa-test')
-def pwa_test():
-    return render_template('pwa_test.html')
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

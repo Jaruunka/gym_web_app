@@ -169,6 +169,8 @@
     </p>
 {% endif %}
 
+<a href="/" class="back-link">Zpět</a>
+
 <h1>Historie tréninků</h1>
 <div class="monthly-counter">
     {{ current_month_name }} – počet tréninků:
@@ -314,8 +316,6 @@
 {% else %}
     <p>Pro vybraný cvik zatím nejsou žádné záznamy.</p>
 {% endif %}
-
-<a href="/" class="back-link">Zpět</a>
 
 {% if selected_exercise and chart_labels %}
 <script>

@@ -93,9 +93,9 @@ def transform_workouts(workouts):
     for date_val, items in grouped.items():
         max_set = max((w.set_number or 1) for w in items)
 
-        for s in range(1, max_set + 1):
+        for s in range(max_set, 0, -1):
             row = {
-                "date": date_val if s == 1 else "",
+                "date": date_val if s == max_set else "",
                 "workout_actions": []
             }
 

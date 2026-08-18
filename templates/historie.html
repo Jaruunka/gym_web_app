@@ -126,9 +126,22 @@
         .delete-list a {
             color: #c00000;
         }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            height: 380px;
+            margin: 20px 0 30px;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
     </style>
 
     {% include '_pwa_head.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -182,6 +195,16 @@
         </a>
     {% endif %}
 </form>
+
+{% if selected_exercise and chart_labels %}
+    <h2>Vývoj výkonu – {{ selected_exercise }}</h2>
+
+    <div class="chart-container">
+        <canvas id="progressChart"></canvas>
+    </div>
+{% elif selected_exercise %}
+    <p>Pro tento cvik nejsou k dispozici údaje o váze.</p>
+{% endif %}
 
 <form action="{{ url_for('export_excel') }}" method="get">
     <button type="submit">Export do Excelu</button>
@@ -278,6 +301,93 @@
 {% endif %}
 
 <a href="/" class="back-link">Zpět</a>
+
+{% if selected_exercise and chart_labels %}
+<script>
+    const chartLabels = {{ chart_labels | tojson }};
+    const chartWeights = {{ chart_weights | tojson }};
+    const chartReps = {{ chart_reps | tojson }};
+
+    new Chart(
+        document.getElementById("progressChart"),
+        {
+            type: "line",
+
+            data: {
+                labels: chartLabels,
+
+                datasets: [
+                    {
+                        label: "Nejvyšší váha (kg)",
+                        data: chartWeights,
+                        borderColor: "#2563eb",
+                        backgroundColor: "#2563eb",
+                        yAxisID: "weightAxis",
+                        tension: 0.25,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    },
+                    {
+                        label: "Počet opakování",
+                        data: chartReps,
+                        borderColor: "#dc2626",
+                        backgroundColor: "#dc2626",
+                        yAxisID: "repsAxis",
+                        tension: 0.25,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }
+                ]
+            },
+
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+
+                scales: {
+                    weightAxis: {
+                        type: "linear",
+                        position: "left",
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: "Váha (kg)"
+                        }
+                    },
+
+                    repsAxis: {
+                        type: "linear",
+                        position: "right",
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        },
+                        title: {
+                            display: true,
+                            text: "Počet opakování"
+                        }
+                    },
+
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Datum"
+                        }
+                    }
+                }
+            }
+        }
+    );
+</script>
+{% endif %}
 
 {% include '_pwa_scripts.html' %}
 </body>

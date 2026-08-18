@@ -273,17 +273,51 @@ def historie():
 
     workouts = workouts_query.order_by(
         Workout.date.desc(),
-        Workout.set_number.asc()
+        Workout.set_number.desc()
     ).all()
 
     table_data, exercises = transform_workouts(workouts)
+
+    chart_labels = []
+    chart_weights = []
+    chart_reps = []
+
+    if selected_exercise:
+        best_by_date = {}
+
+        for workout in workouts:
+            if workout.weight is None:
+                continue
+
+            date_key = str(workout.date)
+            current_best = best_by_date.get(date_key)
+
+            if (
+                current_best is None
+                or workout.weight > current_best.weight
+                or (
+                    workout.weight == current_best.weight
+                    and (workout.reps or 0) > (current_best.reps or 0)
+                )
+            ):
+                best_by_date[date_key] = workout
+
+        for date_key in sorted(best_by_date):
+            best_workout = best_by_date[date_key]
+
+            chart_labels.append(date_key)
+            chart_weights.append(float(best_workout.weight))
+            chart_reps.append(best_workout.reps or 0)
 
     return render_template(
         "historie.html",
         table_data=table_data,
         exercises=exercises,
         all_exercises=all_exercises,
-        selected_exercise=selected_exercise
+        selected_exercise=selected_exercise,
+        chart_labels=chart_labels,
+        chart_weights=chart_weights,
+        chart_reps=chart_reps
     )
 @app.route("/export_excel")
 @login_required

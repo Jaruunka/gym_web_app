@@ -11,6 +11,30 @@
             margin: 10px;
         }
 
+        .filter-form {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .filter-form select {
+            padding: 10px;
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            font-size: 16px;
+            background-color: white;
+        }
+
+        .cancel-filter {
+            padding: 8px 10px;
+            background-color: #ddd;
+            color: black;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+
         .table-wrapper {
             width: 100%;
             overflow-x: auto;
@@ -123,94 +147,135 @@
 
 <h1>Historie tréninků</h1>
 
+<form
+    class="filter-form"
+    action="{{ url_for('historie') }}"
+    method="get"
+>
+    <label for="exercise-filter">
+        <strong>Zobrazit cvik:</strong>
+    </label>
+
+    <select
+        id="exercise-filter"
+        name="exercise"
+        onchange="this.form.submit()"
+    >
+        <option value="">Všechny cviky</option>
+
+        {% for exercise in all_exercises %}
+            <option
+                value="{{ exercise }}"
+                {% if exercise == selected_exercise %}selected{% endif %}
+            >
+                {{ exercise }}
+            </option>
+        {% endfor %}
+    </select>
+
+    {% if selected_exercise %}
+        <a
+            class="cancel-filter"
+            href="{{ url_for('historie') }}"
+        >
+            Zrušit filtr
+        </a>
+    {% endif %}
+</form>
+
 <form action="{{ url_for('export_excel') }}" method="get">
     <button type="submit">Export do Excelu</button>
 </form>
 
 <br>
 
-<div class="table-wrapper">
-    <table>
-        <tr>
-            <th>Datum</th>
-
-            {% for ex in exercises %}
-                <th colspan="2">{{ ex }}</th>
-            {% endfor %}
-
-            <th>Akce</th>
-        </tr>
-
-        <tr>
-            <th></th>
-
-            {% for ex in exercises %}
-                <th>Váha</th>
-                <th>Opakování</th>
-            {% endfor %}
-
-            <th></th>
-        </tr>
-
-        {% for row in table_data %}
+{% if table_data %}
+    <div class="table-wrapper">
+        <table>
             <tr>
-                <td>{{ row.date }}</td>
+                <th>Datum</th>
 
                 {% for ex in exercises %}
-                    <td>
-                        {{ row[ex ~ '_weight'] if row[ex ~ '_weight'] is not none else '' }}
-                    </td>
-                    <td>
-                        {{ row[ex ~ '_reps'] if row[ex ~ '_reps'] is not none else '' }}
-                    </td>
+                    <th colspan="2">{{ ex }}</th>
                 {% endfor %}
 
-                <td>
-                    {% if row.workout_actions %}
-                        <div class="actions">
-
-                            <details class="action-menu">
-                                <summary title="Upravit">✏️</summary>
-
-                                <div class="action-list">
-                                    {% for action in row.workout_actions %}
-                                        <a href="{{ url_for(
-                                            'edit_workout',
-                                            workout_id=action.id
-                                        ) }}">
-                                            {{ action.label }}
-                                        </a>
-                                    {% endfor %}
-                                </div>
-                            </details>
-
-                            <details class="action-menu">
-                                <summary title="Smazat">🗑️</summary>
-
-                                <div class="action-list delete-list">
-                                    {% for action in row.workout_actions %}
-                                        <a
-                                            href="{{ url_for(
-                                                'delete_workout',
-                                                workout_id=action.id
-                                            ) }}"
-                                            onclick="return confirm(
-                                                'Opravdu chceš smazat: {{ action.label }}?'
-                                            )"
-                                        >
-                                            {{ action.label }}
-                                        </a>
-                                    {% endfor %}
-                                </div>
-                            </details>
-
-                        </div>
-                    {% endif %}
-                </td>
+                <th>Akce</th>
             </tr>
-        {% endfor %}
-    </table>
-</div>
+
+            <tr>
+                <th></th>
+
+                {% for ex in exercises %}
+                    <th>Váha</th>
+                    <th>Opakování</th>
+                {% endfor %}
+
+                <th></th>
+            </tr>
+
+            {% for row in table_data %}
+                <tr>
+                    <td>{{ row.date }}</td>
+
+                    {% for ex in exercises %}
+                        <td>
+                            {{ row[ex ~ '_weight'] if row[ex ~ '_weight'] is not none else '' }}
+                        </td>
+
+                        <td>
+                            {{ row[ex ~ '_reps'] if row[ex ~ '_reps'] is not none else '' }}
+                        </td>
+                    {% endfor %}
+
+                    <td>
+                        {% if row.workout_actions %}
+                            <div class="actions">
+
+                                <details class="action-menu">
+                                    <summary title="Upravit">✏️</summary>
+
+                                    <div class="action-list">
+                                        {% for action in row.workout_actions %}
+                                            <a href="{{ url_for(
+                                                'edit_workout',
+                                                workout_id=action.id
+                                            ) }}">
+                                                {{ action.label }}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                </details>
+
+                                <details class="action-menu">
+                                    <summary title="Smazat">🗑️</summary>
+
+                                    <div class="action-list delete-list">
+                                        {% for action in row.workout_actions %}
+                                            <a
+                                                href="{{ url_for(
+                                                    'delete_workout',
+                                                    workout_id=action.id
+                                                ) }}"
+                                                onclick="return confirm(
+                                                    'Opravdu chceš smazat: {{ action.label }}?'
+                                                )"
+                                            >
+                                                {{ action.label }}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                </details>
+
+                            </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
+{% else %}
+    <p>Pro vybraný cvik zatím nejsou žádné záznamy.</p>
+{% endif %}
 
 <a href="/" class="back-link">Zpět</a>
 

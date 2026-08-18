@@ -251,10 +251,40 @@ def zadat():
 @app.route("/historie")
 @login_required
 def historie():
-    workouts = Workout.query.filter_by(user_id=current_user.id).order_by(Workout.date.desc()).all()
-    table_data, exercises = transform_workouts(workouts)
-    return render_template("historie.html", table_data=table_data, exercises=exercises)
+    selected_exercise = request.args.get("exercise", "").strip()
 
+    all_exercises = [
+        row[0]
+        for row in db.session.query(Workout.exercise)
+        .filter(Workout.user_id == current_user.id)
+        .distinct()
+        .order_by(Workout.exercise)
+        .all()
+    ]
+
+    workouts_query = Workout.query.filter_by(
+        user_id=current_user.id
+    )
+
+    if selected_exercise:
+        workouts_query = workouts_query.filter(
+            Workout.exercise == selected_exercise
+        )
+
+    workouts = workouts_query.order_by(
+        Workout.date.desc(),
+        Workout.set_number.asc()
+    ).all()
+
+    table_data, exercises = transform_workouts(workouts)
+
+    return render_template(
+        "historie.html",
+        table_data=table_data,
+        exercises=exercises,
+        all_exercises=all_exercises,
+        selected_exercise=selected_exercise
+    )
 @app.route("/export_excel")
 @login_required
 def export_excel():

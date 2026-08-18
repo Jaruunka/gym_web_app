@@ -252,6 +252,28 @@ def zadat():
 @login_required
 def historie():
     selected_exercise = request.args.get("exercise", "").strip()
+    today = date.today()
+    current_month_prefix = today.strftime("%Y-%m")
+
+    month_names = [
+        "Leden", "Únor", "Březen", "Duben",
+        "Květen", "Červen", "Červenec", "Srpen",
+        "Září", "Říjen", "Listopad", "Prosinec"
+    ]
+
+    current_month_name = month_names[today.month - 1]
+
+    workout_dates = db.session.query(Workout.date).filter(
+        Workout.user_id == current_user.id
+    ).all()
+
+    current_month_workout_dates = {
+        str(row[0])
+        for row in workout_dates
+        if str(row[0]).startswith(current_month_prefix)
+    }
+
+    monthly_workout_count = len(current_month_workout_dates)
 
     all_exercises = [
         row[0]
@@ -308,7 +330,6 @@ def historie():
             chart_labels.append(date_key)
             chart_weights.append(float(best_workout.weight))
             chart_reps.append(best_workout.reps or 0)
-
     return render_template(
         "historie.html",
         table_data=table_data,
@@ -317,7 +338,9 @@ def historie():
         selected_exercise=selected_exercise,
         chart_labels=chart_labels,
         chart_weights=chart_weights,
-        chart_reps=chart_reps
+        chart_reps=chart_reps,
+        current_month_name=current_month_name,
+        monthly_workout_count=monthly_workout_count
     )
 @app.route("/export_excel")
 @login_required

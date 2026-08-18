@@ -138,6 +138,17 @@
             border: 1px solid #ddd;
             border-radius: 8px;
         }
+        .monthly-counter {
+            display: inline-block;
+            margin: 0 0 20px;
+            padding: 14px 18px;
+            background-color: #dcfce7;
+            color: #166534;
+            border: 2px solid #22c55e;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
     </style>
 
     {% include '_pwa_head.html' %}
@@ -159,6 +170,10 @@
 {% endif %}
 
 <h1>Historie tréninků</h1>
+<div class="monthly-counter">
+    {{ current_month_name }} – počet tréninků:
+    {{ monthly_workout_count }}
+</div>
 
 <form
     class="filter-form"

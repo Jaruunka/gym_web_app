@@ -1,4 +1,5 @@
 import os
+import math
 from datetime import date
 from collections import defaultdict
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, send_from_directory, jsonify
@@ -104,6 +105,75 @@ def get_exercise_choices():
         key=lambda exercise_name: exercise_name not in favorite_exercises
     )
     return ordered_exercises, favorite_exercises
+
+
+def parse_decimal(value, field_name):
+    normalized_value = (value or "").strip().replace(",", ".")
+    if not normalized_value:
+        raise ValueError(f"Vyplň pole {field_name}.")
+
+    try:
+        number = float(normalized_value)
+    except ValueError as exc:
+        raise ValueError(
+            f"Pole {field_name} musí být číslo. Můžeš použít čárku i tečku."
+        ) from exc
+
+    if not math.isfinite(number):
+        raise ValueError(f"Pole {field_name} musí být běžné číslo.")
+    if number < 0:
+        raise ValueError(f"Pole {field_name} nemůže být záporné.")
+    return number
+
+
+def parse_positive_integer(value, field_name):
+    try:
+        number = int((value or "").strip())
+    except ValueError as exc:
+        raise ValueError(f"Pole {field_name} musí být celé číslo.") from exc
+
+    if number < 1:
+        raise ValueError(f"Pole {field_name} musí být alespoň 1.")
+    return number
+
+
+def get_exercise_progress(exercise, selected_date):
+    previous_date = db.session.query(db.func.max(Workout.date)).filter(
+        Workout.user_id == current_user.id,
+        Workout.exercise == exercise,
+        Workout.date < selected_date
+    ).scalar()
+
+    previous_workouts = []
+    if previous_date:
+        previous_workouts = Workout.query.filter_by(
+            user_id=current_user.id,
+            exercise=exercise,
+            date=previous_date
+        ).order_by(Workout.set_number.asc()).all()
+
+    personal_record = None
+    if exercise not in {"Běh na pásu", "Shyb"}:
+        personal_record = Workout.query.filter(
+            Workout.user_id == current_user.id,
+            Workout.exercise == exercise,
+            Workout.weight.isnot(None)
+        ).order_by(Workout.weight.desc(), Workout.reps.desc()).first()
+
+    return previous_date, previous_workouts, personal_record
+
+
+@app.template_filter("number")
+def format_number(value):
+    if value is None:
+        return ""
+    return f"{float(value):g}"
+
+
+@app.template_filter("czech_date")
+def format_czech_date(value):
+    parsed_date = date.fromisoformat(str(value))
+    return f"{parsed_date.day}. {parsed_date.month}. {parsed_date.year}"
 
 # --- FUNKCE PRO TRANSFORMACI WORKOUTŮ ---
 def transform_workouts(workouts):
@@ -264,43 +334,58 @@ def zadat():
         next_set = None
 
     if request.method == "POST":
-        if exercise_val == "Běh na pásu":
-            minutes = int(request.form.get("minutes") or 0)
-            speed = float(request.form.get("speed") or 0)
-            incline = float(request.form.get("incline") or 0)
-            novy_trenink = Workout(
-                date=date_val, exercise=exercise_val,
-                minutes=minutes, speed=speed, incline=incline,
-                user_id=current_user.id
-            )
-            message = "Kardio záznam uložen!"
-        else:
-            weight = float(request.form.get("weight") or 0)
-            reps = int(request.form.get("reps") or 0)
-            band_color = request.form.get("band_color") if exercise_val == "Shyb" else None
+        try:
+            if exercise_val == "Běh na pásu":
+                minutes = parse_positive_integer(request.form.get("minutes"), "čas")
+                speed = parse_decimal(request.form.get("speed"), "rychlost")
+                incline = parse_decimal(request.form.get("incline"), "stoupání")
+                novy_trenink = Workout(
+                    date=date_val, exercise=exercise_val,
+                    minutes=minutes, speed=speed, incline=incline,
+                    user_id=current_user.id
+                )
+                message = "Kardio záznam uložen!"
+            else:
+                weight = (
+                    None
+                    if exercise_val == "Shyb"
+                    else parse_decimal(request.form.get("weight"), "váha")
+                )
+                reps = parse_positive_integer(request.form.get("reps"), "opakování")
+                band_color = request.form.get("band_color") if exercise_val == "Shyb" else None
 
-            novy_trenink = Workout(
-                date=date_val,
-                exercise=exercise_val,
-                weight=weight,
-                reps=reps,
-                set_number=next_set,
-                user_id=current_user.id,
-                band_color=band_color
-            )
-            message = f"Série {next_set} uložena!"
+                novy_trenink = Workout(
+                    date=date_val,
+                    exercise=exercise_val,
+                    weight=weight,
+                    reps=reps,
+                    set_number=next_set,
+                    user_id=current_user.id,
+                    band_color=band_color
+                )
+                message = f"Série {next_set} uložena!"
+        except ValueError as error:
+            flash(str(error), "error")
+            return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
         db.session.add(novy_trenink)
         db.session.commit()
-        flash(message)
+        flash(message, "success")
         return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
     ordered_exercises, favorite_exercises = get_exercise_choices()
+    previous_date, previous_workouts, personal_record = get_exercise_progress(
+        exercise_val,
+        date_val
+    )
 
     return render_template(
         "zadat.html", today=date_val, exercise=exercise_val,
         next_set=next_set, message=message, silove_cviky=ordered_exercises,
         favorite_exercises=favorite_exercises,
+        previous_date=previous_date,
+        previous_workouts=previous_workouts,
+        personal_record=personal_record,
         last_weight=last_weight
     )
 
@@ -438,22 +523,30 @@ def edit_workout(workout_id):
     if request.method == "POST":
         workout.date = request.form.get("date")
         workout.exercise = request.form.get("exercise")
-        if workout.exercise == "Běh na pásu":
-            workout.minutes = int(request.form.get("minutes") or 0)
-            workout.speed = float(request.form.get("speed") or 0)
-            workout.incline = float(request.form.get("incline") or 0)
-            workout.weight = None
-            workout.reps = None
-            workout.set_number = None
-            workout.band_color = None
-        else:
-            workout.weight = float(request.form.get("weight") or 0)
-            workout.reps = int(request.form.get("reps") or 0)
-            workout.set_number = int(request.form.get("set_number") or 1)
-            workout.band_color = request.form.get("band_color") if workout.exercise == "Shyb" else None
-            workout.minutes = None
-            workout.speed = None
-            workout.incline = None
+        try:
+            if workout.exercise == "Běh na pásu":
+                workout.minutes = parse_positive_integer(request.form.get("minutes"), "čas")
+                workout.speed = parse_decimal(request.form.get("speed"), "rychlost")
+                workout.incline = parse_decimal(request.form.get("incline"), "stoupání")
+                workout.weight = None
+                workout.reps = None
+                workout.set_number = None
+                workout.band_color = None
+            else:
+                workout.weight = (
+                    None
+                    if workout.exercise == "Shyb"
+                    else parse_decimal(request.form.get("weight"), "váha")
+                )
+                workout.reps = parse_positive_integer(request.form.get("reps"), "opakování")
+                workout.set_number = parse_positive_integer(request.form.get("set_number"), "série")
+                workout.band_color = request.form.get("band_color") if workout.exercise == "Shyb" else None
+                workout.minutes = None
+                workout.speed = None
+                workout.incline = None
+        except ValueError as error:
+            flash(str(error), "error")
+            return redirect(url_for("edit_workout", workout_id=workout.id))
 
         db.session.commit()
         flash("Záznam upraven!")

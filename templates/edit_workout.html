@@ -19,6 +19,12 @@
 
 <h1>Upravit záznam</h1>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, text in messages %}
+        <p style="color: #b42318;">{{ text }}</p>
+    {% endfor %}
+{% endwith %}
+
 <form method="POST">
     <label for="date">Datum:</label>
     <input
@@ -54,11 +60,10 @@
     <div id="strength_fields">
         <label for="weight">Váha (kg):</label>
         <input
-            type="number"
-            step="0.1"
+            type="text"
             id="weight"
             name="weight"
-            min="0"
+            inputmode="decimal"
             value="{{ workout.weight or '' }}"
         >
 

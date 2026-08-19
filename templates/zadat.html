@@ -81,6 +81,42 @@
             margin: 0;
             accent-color: #198754;
         }
+
+        .flash-message {
+            max-width: 400px;
+            margin: 10px auto;
+            padding: 10px 12px;
+            border-radius: 6px;
+            background-color: #fdecec;
+            color: #b42318;
+        }
+
+        .flash-message.success {
+            background-color: #e9f7ef;
+            color: #198754;
+        }
+
+        .performance-card {
+            background-color: #f0f7ff;
+            border: 1px solid #cfe2ff;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .performance-card strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .performance-card ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .record-card {
+            background-color: #fff8e1;
+            border-color: #ffe08a;
+        }
     </style>
 
     {% include '_pwa_head.html' %}
@@ -105,6 +141,12 @@
     {% if message %}
         <p style="color: green;">{{ message }}</p>
     {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, text in messages %}
+            <div class="flash-message {{ category }}">{{ text }}</div>
+        {% endfor %}
+    {% endwith %}
 
     <form method="POST">
         <label for="date">Datum:</label>
@@ -149,6 +191,32 @@
                 {% if exercise in favorite_exercises %}✓ Oblíbený cvik{% else %}Přidat mezi oblíbené{% endif %}
             </span>
         </label>
+
+        {% if previous_workouts %}
+            <div class="performance-card">
+                <strong>Minule {{ previous_date|czech_date }}</strong>
+                <ul>
+                    {% for item in previous_workouts %}
+                        <li>
+                            {% if exercise == "Běh na pásu" %}
+                                {{ item.minutes }} min, {{ item.speed|number }} km/h, stoupání {{ item.incline|number }} %
+                            {% elif exercise == "Shyb" %}
+                                {{ item.reps }} opakování{% if item.band_color %}, guma {{ item.band_color }}{% endif %}
+                            {% else %}
+                                {{ item.weight|number }} kg × {{ item.reps }}
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if personal_record %}
+            <div class="performance-card record-card">
+                <strong>🏆 Osobní rekord</strong>
+                {{ personal_record.weight|number }} kg × {{ personal_record.reps }} — {{ personal_record.date|czech_date }}
+            </div>
+        {% endif %}
 
         <!-- Silový trénink -->
         <div id="strength_fields">

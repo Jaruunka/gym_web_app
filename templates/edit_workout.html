@@ -43,7 +43,7 @@
                 value="{{ cvik }}"
                 {% if cvik == workout.exercise %}selected{% endif %}
             >
-                {{ cvik }}
+                {% if cvik in favorite_exercises %}✓ {% endif %}{{ cvik }}
             </option>
         {% endfor %}
     </select>

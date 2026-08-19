@@ -60,6 +60,27 @@
             border-radius: 4px;
             text-decoration: none;
         }
+
+        .favorite-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #667085;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        .favorite-control.is-favorite {
+            color: #198754;
+            font-weight: bold;
+        }
+
+        .favorite-control input {
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            accent-color: #198754;
+        }
     </style>
 
     {% include '_pwa_head.html' %}
@@ -108,10 +129,26 @@
                     value="{{ cvik }}"
                     {% if cvik == exercise %}selected{% endif %}
                 >
-                    {{ cvik }}
+                    {% if cvik in favorite_exercises %}✓ {% endif %}{{ cvik }}
                 </option>
             {% endfor %}
         </select>
+
+        <label
+            for="favorite"
+            id="favorite-control"
+            class="favorite-control{% if exercise in favorite_exercises %} is-favorite{% endif %}"
+        >
+            <input
+                type="checkbox"
+                id="favorite"
+                {% if exercise in favorite_exercises %}checked{% endif %}
+                onchange="toggleFavorite()"
+            >
+            <span id="favorite-label">
+                {% if exercise in favorite_exercises %}✓ Oblíbený cvik{% else %}Přidat mezi oblíbené{% endif %}
+            </span>
+        </label>
 
         <!-- Silový trénink -->
         <div id="strength_fields">
@@ -225,6 +262,33 @@
 
             window.location.href =
                 `/zadat?date=${encodeURIComponent(date)}&exercise=${encodeURIComponent(exercise)}`;
+        }
+
+        async function toggleFavorite() {
+            const checkbox = document.getElementById("favorite");
+            const exercise = document.getElementById("exercise").value;
+            const formData = new FormData();
+            formData.append("exercise", exercise);
+            formData.append("is_favorite", checkbox.checked ? "true" : "false");
+
+            checkbox.disabled = true;
+
+            try {
+                const response = await fetch("{{ url_for('favorite_exercise') }}", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error("Oblíbený cvik se nepodařilo uložit.");
+                }
+
+                updatePage();
+            } catch (error) {
+                checkbox.checked = !checkbox.checked;
+                checkbox.disabled = false;
+                alert(error.message);
+            }
         }
 
         window.addEventListener("load", function () {

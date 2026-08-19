@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from collections import defaultdict
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, send_from_directory, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -70,6 +70,20 @@ class Workout(db.Model):
     incline = db.Column(db.Float, nullable=True)
     band_color = db.Column(db.String(50), nullable=True)
 
+
+class FavoriteExercise(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    exercise = db.Column(db.String(100), nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "exercise", name="uq_favorite_exercise_user_exercise"),
+    )
+
 # LOGIN MANAGER
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -78,6 +92,18 @@ login_manager.login_view = "login"
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+
+def get_exercise_choices():
+    favorite_exercises = {
+        item.exercise
+        for item in FavoriteExercise.query.filter_by(user_id=current_user.id).all()
+    }
+    ordered_exercises = sorted(
+        SILOVE_CVIKY,
+        key=lambda exercise_name: exercise_name not in favorite_exercises
+    )
+    return ordered_exercises, favorite_exercises
 
 # --- FUNKCE PRO TRANSFORMACI WORKOUTŮ ---
 def transform_workouts(workouts):
@@ -185,6 +211,32 @@ def logout():
     flash("Odhlášeno!")
     return redirect(url_for("login"))
 
+
+@app.route("/favorite-exercise", methods=["POST"])
+@login_required
+def favorite_exercise():
+    exercise = request.form.get("exercise", "").strip()
+    is_favorite = request.form.get("is_favorite") == "true"
+
+    if exercise not in SILOVE_CVIKY:
+        return jsonify({"error": "Neznámý cvik"}), 400
+
+    favorite = FavoriteExercise.query.filter_by(
+        user_id=current_user.id,
+        exercise=exercise
+    ).first()
+
+    if is_favorite and favorite is None:
+        db.session.add(FavoriteExercise(
+            user_id=current_user.id,
+            exercise=exercise
+        ))
+    elif not is_favorite and favorite is not None:
+        db.session.delete(favorite)
+
+    db.session.commit()
+    return jsonify({"exercise": exercise, "is_favorite": is_favorite})
+
 @app.route("/zadat", methods=["GET", "POST"])
 @login_required
 def zadat():
@@ -243,9 +295,12 @@ def zadat():
         flash(message)
         return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
+    ordered_exercises, favorite_exercises = get_exercise_choices()
+
     return render_template(
         "zadat.html", today=date_val, exercise=exercise_val,
-        next_set=next_set, message=message, silove_cviky=SILOVE_CVIKY,
+        next_set=next_set, message=message, silove_cviky=ordered_exercises,
+        favorite_exercises=favorite_exercises,
         last_weight=last_weight
     )
 
@@ -404,7 +459,13 @@ def edit_workout(workout_id):
         flash("Záznam upraven!")
         return redirect(url_for("historie"))
 
-    return render_template("edit_workout.html", workout=workout, silove_cviky=SILOVE_CVIKY)
+    ordered_exercises, favorite_exercises = get_exercise_choices()
+    return render_template(
+        "edit_workout.html",
+        workout=workout,
+        silove_cviky=ordered_exercises,
+        favorite_exercises=favorite_exercises
+    )
 
 @app.route('/service-worker.js')
 def service_worker():

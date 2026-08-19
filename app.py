@@ -14,7 +14,8 @@ SILOVE_CVIKY = [
     "Dřepy", "Hip thrust", "Benchpress", "Rumuny", "Bulhary",
     "Abduction", "Adduction", "Kladivový zdvih", "Hyper extension",
     "Torso twist", "Lat pull down", "Cable row", "Leg press", "Shyb", "Triceps tlak",
-    "Cable wood chop", "Běh na pásu"
+    "Cable wood chop", "Cable Crunch", "Triceps Rope Pushdown",
+    "Seated low row", "Lateral raises", "Běh na pásu"
 ]
 
 basedir = os.path.abspath(os.path.dirname(__file__))

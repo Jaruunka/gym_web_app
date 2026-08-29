@@ -9,6 +9,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
 import io
 from flask_migrate import Migrate
+from email_validator import validate_email, EmailNotValidError
+from sqlalchemy import func
 
 # Seznam silových cviků + kardio
 SILOVE_CVIKY = [
@@ -245,12 +247,27 @@ def index():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        email = request.form.get("email")
+        email_input = request.form.get("email", "").strip()
         password = request.form.get("password")
-        if not email or not password:
-            flash("Vyplň email i heslo")
+        password_confirm = request.form.get("password_confirm")
+
+        if not email_input or not password or not password_confirm:
+            flash("Vyplň e-mail a obě pole s heslem.")
             return redirect(url_for("register"))
-        if User.query.filter_by(email=email).first():
+        if password != password_confirm:
+            flash("Hesla se neshodují.")
+            return redirect(url_for("register"))
+
+        try:
+            email = validate_email(
+                email_input,
+                check_deliverability=False
+            ).normalized.lower()
+        except EmailNotValidError:
+            flash("Zadej platnou e-mailovou adresu.")
+            return redirect(url_for("register"))
+
+        if User.query.filter(func.lower(User.email) == email).first():
             flash("Uživatel už existuje!")
             return redirect(url_for("register"))
         user = User(email=email)
@@ -264,9 +281,9 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form.get("email")
+        email = request.form.get("email", "").strip().lower()
         password = request.form.get("password")
-        user = User.query.filter_by(email=email).first()
+        user = User.query.filter(func.lower(User.email) == email).first()
         if user and user.check_password(password):
             login_user(user)
             return redirect(url_for("index"))

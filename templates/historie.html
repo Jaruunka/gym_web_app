@@ -323,10 +323,43 @@
     const chartWeights = {{ chart_weights | tojson }};
     const chartReps = {{ chart_reps | tojson }};
 
+    const repsTargetBand = {
+        id: "repsTargetBand",
+        beforeDatasetsDraw(chart) {
+            const { ctx, chartArea, scales } = chart;
+            const repsScale = scales.repsAxis;
+
+            if (!chartArea || !repsScale) {
+                return;
+            }
+
+            const bandStart = repsScale.getPixelForValue(8);
+            const bandEnd = repsScale.getPixelForValue(12);
+            const top = Math.max(chartArea.top, Math.min(bandStart, bandEnd));
+            const bottom = Math.min(chartArea.bottom, Math.max(bandStart, bandEnd));
+
+            if (bottom <= top) {
+                return;
+            }
+
+            ctx.save();
+            ctx.fillStyle = "rgba(34, 197, 94, 0.14)";
+            ctx.fillRect(
+                chartArea.left,
+                top,
+                chartArea.right - chartArea.left,
+                bottom - top
+            );
+            ctx.restore();
+        }
+    };
+
     new Chart(
         document.getElementById("progressChart"),
         {
             type: "line",
+
+            plugins: [repsTargetBand],
 
             data: {
                 labels: chartLabels,
@@ -379,6 +412,7 @@
                         type: "linear",
                         position: "right",
                         beginAtZero: true,
+                        suggestedMax: 12,
                         ticks: {
                             precision: 0
                         },

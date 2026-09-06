@@ -16,7 +16,8 @@ from sqlalchemy import func
 SILOVE_CVIKY = [
     "Dřepy", "Hip thrust", "Benchpress", "Rumuny", "Bulhary",
     "Abduction", "Adduction", "Kladivový zdvih", "Hyper extension",
-    "Torso twist", "Lat pull down", "Cable row", "Leg press", "Shyb", "Triceps tlak",
+    "Torso twist", "Lat pull down – široký úchop",
+    "Lat pull down – úzký neutrální úchop", "Cable row", "Leg press", "Shyb", "Triceps tlak",
     "Cable wood chop", "Cable Crunch", "Triceps Rope Pushdown",
     "Seated low row", "Lateral raises", "Běh na pásu"
 ]
@@ -91,6 +92,27 @@ class FavoriteExercise(db.Model):
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
+
+
+@app.before_request
+def migrate_renamed_exercises():
+    """Jednorázově převede staré názvy cviků na jejich nové varianty."""
+    if app.config.get("EXERCISE_NAMES_MIGRATED"):
+        return
+
+    old_name = "Lat pull down"
+    new_name = "Lat pull down – široký úchop"
+
+    Workout.query.filter_by(exercise=old_name).update(
+        {Workout.exercise: new_name},
+        synchronize_session=False
+    )
+    FavoriteExercise.query.filter_by(exercise=old_name).update(
+        {FavoriteExercise.exercise: new_name},
+        synchronize_session=False
+    )
+    db.session.commit()
+    app.config["EXERCISE_NAMES_MIGRATED"] = True
 
 @login_manager.user_loader
 def load_user(user_id):

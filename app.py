@@ -1,5 +1,8 @@
 import os
 import math
+import hmac
+import smtplib
+from email.message import EmailMessage
 from datetime import date
 from collections import defaultdict
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, send_from_directory, jsonify
@@ -11,6 +14,7 @@ import io
 from flask_migrate import Migrate
 from email_validator import validate_email, EmailNotValidError
 from sqlalchemy import func
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 # Seznam silových cviků + kardio
 SILOVE_CVIKY = [
@@ -159,6 +163,64 @@ def parse_positive_integer(value, field_name):
     if number < 1:
         raise ValueError(f"Pole {field_name} musí být alespoň 1.")
     return number
+
+
+def get_password_reset_serializer():
+    return URLSafeTimedSerializer(
+        app.config["SECRET_KEY"],
+        salt="password-reset"
+    )
+
+
+def create_password_reset_token(user):
+    return get_password_reset_serializer().dumps({
+        "user_id": user.id,
+        "password_version": user.password_hash[-20:]
+    })
+
+
+def get_user_from_password_reset_token(token, max_age=3600):
+    try:
+        token_data = get_password_reset_serializer().loads(
+            token,
+            max_age=max_age
+        )
+    except (BadSignature, SignatureExpired):
+        return None
+
+    user = db.session.get(User, token_data.get("user_id"))
+    if user is None:
+        return None
+
+    password_version = str(token_data.get("password_version", ""))
+    if not hmac.compare_digest(password_version, user.password_hash[-20:]):
+        return None
+    return user
+
+
+def send_password_reset_email(recipient, reset_url):
+    mail_username = os.environ.get("MAIL_USERNAME", "").strip()
+    mail_password = os.environ.get("MAIL_PASSWORD", "").replace(" ", "")
+
+    if not mail_username or not mail_password:
+        raise RuntimeError("Chybí MAIL_USERNAME nebo MAIL_PASSWORD.")
+
+    message = EmailMessage()
+    message["Subject"] = "Obnovení hesla – Gym app"
+    message["From"] = mail_username
+    message["To"] = recipient
+    message.set_content(
+        "Ahoj,\n\n"
+        "pro nastavení nového hesla klikni na tento odkaz:\n"
+        f"{reset_url}\n\n"
+        "Odkaz je platný 60 minut. Pokud jsi o změnu hesla nežádala, "
+        "tento e-mail můžeš ignorovat.\n"
+    )
+
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as smtp:
+        smtp.starttls()
+        smtp.login(mail_username, mail_password)
+        smtp.send_message(message)
 
 
 def get_exercise_progress(exercise, selected_date):
@@ -312,6 +374,60 @@ def login():
         flash("Špatné údaje!")
         return redirect(url_for("login"))
     return render_template("login.html")
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        user = User.query.filter(func.lower(User.email) == email).first()
+
+        if user:
+            reset_token = create_password_reset_token(user)
+            reset_url = url_for(
+                "reset_password",
+                token=reset_token,
+                _external=True,
+                _scheme="https" if os.environ.get("RENDER") else None
+            )
+            try:
+                send_password_reset_email(user.email, reset_url)
+            except Exception:
+                app.logger.exception("Nepodařilo se odeslat e-mail pro obnovu hesla.")
+
+        flash(
+            "Pokud je tento e-mail zaregistrovaný, poslaly jsme na něj "
+            "odkaz pro nastavení nového hesla."
+        )
+        return redirect(url_for("login"))
+
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    user = get_user_from_password_reset_token(token)
+    if user is None:
+        flash("Odkaz pro změnu hesla je neplatný nebo už vypršel.")
+        return redirect(url_for("forgot_password"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        password_confirm = request.form.get("password_confirm", "")
+
+        if len(password) < 8:
+            flash("Nové heslo musí mít alespoň 8 znaků.")
+            return redirect(url_for("reset_password", token=token))
+        if password != password_confirm:
+            flash("Zadaná hesla se neshodují.")
+            return redirect(url_for("reset_password", token=token))
+
+        user.set_password(password)
+        db.session.commit()
+        flash("Heslo bylo změněno. Teď se můžeš přihlásit.")
+        return redirect(url_for("login"))
+
+    return render_template("reset_password.html", token=token)
 
 @app.route("/logout")
 @login_required

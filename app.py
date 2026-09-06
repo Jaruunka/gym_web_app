@@ -1,8 +1,8 @@
 import os
 import math
 import hmac
-import smtplib
-from email.message import EmailMessage
+import json
+from urllib.request import Request, urlopen
 from datetime import date
 from collections import defaultdict
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, send_from_directory, jsonify
@@ -199,28 +199,34 @@ def get_user_from_password_reset_token(token, max_age=3600):
 
 
 def send_password_reset_email(recipient, reset_url):
-    mail_username = os.environ.get("MAIL_USERNAME", "").strip()
-    mail_password = os.environ.get("MAIL_PASSWORD", "").replace(" ", "")
+    webhook_url = os.environ.get("MAIL_WEBHOOK_URL", "").strip()
+    webhook_secret = os.environ.get("MAIL_WEBHOOK_SECRET", "").strip()
 
-    if not mail_username or not mail_password:
-        raise RuntimeError("Chybí MAIL_USERNAME nebo MAIL_PASSWORD.")
+    if not webhook_url or not webhook_secret:
+        raise RuntimeError(
+            "Chybí MAIL_WEBHOOK_URL nebo MAIL_WEBHOOK_SECRET."
+        )
 
-    message = EmailMessage()
-    message["Subject"] = "Obnovení hesla – Gym app"
-    message["From"] = mail_username
-    message["To"] = recipient
-    message.set_content(
-        "Ahoj,\n\n"
-        "pro nastavení nového hesla klikni na tento odkaz:\n"
-        f"{reset_url}\n\n"
-        "Odkaz je platný 60 minut. Pokud jsi o změnu hesla nežádala, "
-        "tento e-mail můžeš ignorovat.\n"
+    payload = json.dumps({
+        "secret": webhook_secret,
+        "to": recipient,
+        "reset_url": reset_url
+    }).encode("utf-8")
+
+    request_data = Request(
+        webhook_url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST"
     )
 
-    with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as smtp:
-        smtp.starttls()
-        smtp.login(mail_username, mail_password)
-        smtp.send_message(message)
+    with urlopen(request_data, timeout=15) as response:
+        response_data = json.loads(response.read().decode("utf-8"))
+
+    if not response_data.get("ok"):
+        raise RuntimeError(
+            response_data.get("error", "E-mail se nepodařilo odeslat.")
+        )
 
 
 def get_exercise_progress(exercise, selected_date):

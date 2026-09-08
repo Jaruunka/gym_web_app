@@ -77,6 +77,7 @@ class Workout(db.Model):
     speed = db.Column(db.Float, nullable=True)
     incline = db.Column(db.Float, nullable=True)
     band_color = db.Column(db.String(50), nullable=True)
+    note = db.Column(db.Text, nullable=True)
 
 
 class FavoriteExercise(db.Model):
@@ -90,6 +91,19 @@ class FavoriteExercise(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("user_id", "exercise", name="uq_favorite_exercise_user_exercise"),
+    )
+
+class CustomExercise(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    has_weight = db.Column(db.Boolean, default=True)
+    has_reps = db.Column(db.Boolean, default=True)
+    has_speed = db.Column(db.Boolean, default=False)
+    has_note = db.Column(db.Boolean, default=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "name", name="uq_custom_exercise_user_name"),
     )
 
 # LOGIN MANAGER
@@ -128,11 +142,17 @@ def get_exercise_choices():
         item.exercise
         for item in FavoriteExercise.query.filter_by(user_id=current_user.id).all()
     }
+    
+    custom_exercises = CustomExercise.query.filter_by(user_id=current_user.id).all()
+    custom_names = [ce.name for ce in custom_exercises]
+    
+    all_available = SILOVE_CVIKY + custom_names
+    
     ordered_exercises = sorted(
-        SILOVE_CVIKY,
+        all_available,
         key=lambda exercise_name: exercise_name not in favorite_exercises
     )
-    return ordered_exercises, favorite_exercises
+    return ordered_exercises, favorite_exercises, custom_exercises
 
 
 def parse_decimal(value, field_name):
@@ -449,7 +469,9 @@ def favorite_exercise():
     exercise = request.form.get("exercise", "").strip()
     is_favorite = request.form.get("is_favorite") == "true"
 
-    if exercise not in SILOVE_CVIKY:
+    # Povolit i vlastní cviky
+    custom_exists = CustomExercise.query.filter_by(user_id=current_user.id, name=exercise).first()
+    if exercise not in SILOVE_CVIKY and not custom_exists:
         return jsonify({"error": "Neznámý cvik"}), 400
 
     favorite = FavoriteExercise.query.filter_by(
@@ -468,11 +490,61 @@ def favorite_exercise():
     db.session.commit()
     return jsonify({"exercise": exercise, "is_favorite": is_favorite})
 
+@app.route("/custom-exercise/add", methods=["POST"])
+@login_required
+def add_custom_exercise():
+    name = request.form.get("name", "").strip()
+    if not name:
+        flash("Jméno cviku nesmí být prázdné.", "error")
+        return redirect(url_for("zadat"))
+    
+    if name in SILOVE_CVIKY or CustomExercise.query.filter_by(user_id=current_user.id, name=name).first():
+        flash("Tento cvik už existuje.", "error")
+        return redirect(url_for("zadat"))
+
+    has_weight = "has_weight" in request.form
+    has_reps = "has_reps" in request.form
+    has_speed = "has_speed" in request.form
+    has_note = "has_note" in request.form
+
+    new_ce = CustomExercise(
+        user_id=current_user.id,
+        name=name,
+        has_weight=has_weight,
+        has_reps=has_reps,
+        has_speed=has_speed,
+        has_note=has_note
+    )
+    db.session.add(new_ce)
+    db.session.commit()
+    flash(f"Cvik '{name}' byl přidán.", "success")
+    return redirect(url_for("zadat", exercise=name))
+
+@app.route("/custom-exercise/delete/<int:ce_id>", methods=["POST"])
+@login_required
+def delete_custom_exercise(ce_id):
+    ce = CustomExercise.query.get_or_404(ce_id)
+    if ce.user_id != current_user.id:
+        flash("Nemáš oprávnění smazat tento cvik.")
+        return redirect(url_for("zadat"))
+    
+    # Smazat i z oblíbených
+    FavoriteExercise.query.filter_by(user_id=current_user.id, exercise=ce.name).delete()
+    
+    db.session.delete(ce)
+    db.session.commit()
+    flash(f"Cvik '{ce.name}' byl smazán.", "success")
+    return redirect(url_for("zadat"))
+
 @app.route("/zadat", methods=["GET", "POST"])
 @login_required
 def zadat():
     date_val = request.form.get("date") or request.args.get("date") or date.today().isoformat()
-    exercise_val = request.form.get("exercise") or request.args.get("exercise") or SILOVE_CVIKY[0]
+    
+    # Získání seznamu cviků pro validaci a výběr
+    ordered_exercises, favorite_exercises, custom_exercises = get_exercise_choices()
+    
+    exercise_val = request.form.get("exercise") or request.args.get("exercise") or (ordered_exercises[0] if ordered_exercises else SILOVE_CVIKY[0])
 
     message = ""
     next_set = 1
@@ -507,19 +579,38 @@ def zadat():
                 )
                 message = "Kardio záznam uložen!"
             else:
-                weight = (
-                    None
-                    if exercise_val == "Shyb"
-                    else parse_decimal(request.form.get("weight"), "váha")
-                )
-                reps = parse_positive_integer(request.form.get("reps"), "opakování")
-                band_color = request.form.get("band_color") if exercise_val == "Shyb" else None
+                weight = None
+                reps = None
+                speed = None
+                note = request.form.get("note")
+
+                # Pokud je to vlastní cvik, respektujeme jeho nastavení
+                ce = next((c for c in custom_exercises if c.name == exercise_val), None)
+                
+                is_shyb = (exercise_val == "Shyb")
+                
+                if ce:
+                    if ce.has_weight:
+                        weight = parse_decimal(request.form.get("weight"), "váha")
+                    if ce.has_reps:
+                        reps = parse_positive_integer(request.form.get("reps"), "opakování")
+                    if ce.has_speed:
+                        speed = parse_decimal(request.form.get("speed"), "rychlost")
+                else:
+                    # Standardní cviky
+                    if not is_shyb:
+                        weight = parse_decimal(request.form.get("weight"), "váha")
+                    reps = parse_positive_integer(request.form.get("reps"), "opakování")
+
+                band_color = request.form.get("band_color") if is_shyb else None
 
                 novy_trenink = Workout(
                     date=date_val,
                     exercise=exercise_val,
                     weight=weight,
                     reps=reps,
+                    speed=speed,
+                    note=note,
                     set_number=next_set,
                     user_id=current_user.id,
                     band_color=band_color
@@ -534,7 +625,6 @@ def zadat():
         flash(message, "success")
         return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
-    ordered_exercises, favorite_exercises = get_exercise_choices()
     previous_date, previous_workouts, personal_record = get_exercise_progress(
         exercise_val,
         date_val
@@ -544,6 +634,7 @@ def zadat():
         "zadat.html", today=date_val, exercise=exercise_val,
         next_set=next_set, message=message, silove_cviky=ordered_exercises,
         favorite_exercises=favorite_exercises,
+        custom_exercises=custom_exercises,
         previous_date=previous_date,
         previous_workouts=previous_workouts,
         personal_record=personal_record,

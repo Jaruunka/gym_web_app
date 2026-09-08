@@ -108,7 +108,7 @@
             margin-bottom: 6px;
         }
 
-        .performance-card ul {
+                .performance-card ul {
             margin: 0;
             padding-left: 20px;
         }
@@ -117,7 +117,37 @@
             background-color: #fff8e1;
             border-color: #ffe08a;
         }
+
+        .custom-exercise-modal {
+            display: none;
+            background-color: #f0f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #d1d9e6;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .checkbox-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            width: auto;
+        }
+
+        .checkbox-group input {
+            width: 18px;
+            height: 18px;
+        }
     </style>
+
 
     {% include '_pwa_head.html' %}
 </head>
@@ -142,14 +172,47 @@
         <p style="color: green;">{{ message }}</p>
     {% endif %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, text in messages %}
             <div class="flash-message {{ category }}">{{ text }}</div>
         {% endfor %}
     {% endwith %}
 
-    <form method="POST">
-        <label for="date">Datum:</label>
+    <div id="custom-exercise-form" class="custom-exercise-modal">
+        <h3>Nový vlastní cvik</h3>
+        <form action="{{ url_for('add_custom_exercise') }}" method="POST" id="real-custom-form">
+            <label for="custom_name">Název cviku:</label>
+            <input type="text" id="custom_name" name="name" placeholder="Např. Přítahy v předklonu">
+            
+            <p style="margin-bottom: 5px; font-weight: bold;">Parametry cviku:</p>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="has_weight" checked> Váha</label>
+                <label><input type="checkbox" name="has_reps" checked> Opakování</label>
+                <label><input type="checkbox" name="has_speed"> Rychlost</label>
+                <label><input type="checkbox" name="has_note"> Poznámka</label>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" style="background-color: #28a745;">Uložit cvik</button>
+                <button type="button" onclick="hideCustomForm()" style="background-color: #dc3545;">Zrušit</button>
+            </div>
+        </form>
+    </div>
+
+    {% if exercise in custom_exercises|map(attribute='name') %}
+        <div style="max-width: 400px; margin: 0 auto 15px; text-align: right;">
+            <form action="{{ url_for('delete_custom_exercise', ce_id=custom_exercises|selectattr('name', 'equalto', exercise)|map(attribute='id')|first) }}" 
+                  method="POST" 
+                  style="box-shadow: none; padding: 0; background: none; margin: 0; display: inline;"
+                  onsubmit="return confirm('Opravdu chceš tento vlastní cvik smazat?')">
+                <button type="submit" style="background-color: #dc3545; padding: 5px 10px; font-size: 14px; width: auto; margin: 0;">Smazat vlastní cvik</button>
+            </form>
+        </div>
+    {% endif %}
+
+                <form method="POST">
+            <label for="date">Datum:</label>
+
         <input
             type="date"
             id="date"
@@ -164,7 +227,7 @@
             id="exercise"
             name="exercise"
             required
-            onchange="updatePage(); toggleFields();"
+            onchange="handleExerciseChange()"
         >
             {% for cvik in silove_cviky %}
                 <option
@@ -174,7 +237,11 @@
                     {% if cvik in favorite_exercises %}✓ {% endif %}{{ cvik }}
                 </option>
             {% endfor %}
+            <option value="__add_custom__">+ Přidat vlastní...</option>
         </select>
+
+
+
 
         <label
             for="favorite"
@@ -187,23 +254,29 @@
                 {% if exercise in favorite_exercises %}checked{% endif %}
                 onchange="toggleFavorite()"
             >
-            <span id="favorite-label">
+                        <span id="favorite-label">
                 {% if exercise in favorite_exercises %}✓ Oblíbený cvik{% else %}Přidat mezi oblíbené{% endif %}
             </span>
         </label>
 
+
         {% if previous_workouts %}
+
             <div class="performance-card">
                 <strong>Minule {{ previous_date|czech_date }}</strong>
                 <ul>
                     {% for item in previous_workouts %}
                         <li>
-                            {% if exercise == "Běh na pásu" %}
+            {% if exercise == "Běh na pásu" %}
                                 {{ item.minutes }} min, {{ item.speed|number }} km/h, stoupání {{ item.incline|number }} %
                             {% elif exercise == "Shyb" %}
                                 {{ item.reps }} opakování{% if item.band_color %}, guma {{ item.band_color }}{% endif %}
                             {% else %}
-                                {{ item.weight|number }} kg × {{ item.reps }}
+                                {% if item.weight is not none %}{{ item.weight|number }} kg{% endif %}
+                                {% if item.weight is not none and item.reps is not none %} × {% endif %}
+                                {% if item.reps is not none %}{{ item.reps }} opakování{% endif %}
+                                {% if item.speed is not none %}, rychlost {{ item.speed|number }} km/h{% endif %}
+                                {% if item.note %}<br><small>Poznámka: {{ item.note }}</small>{% endif %}
                             {% endif %}
                         </li>
                     {% endfor %}
@@ -218,26 +291,41 @@
             </div>
         {% endif %}
 
-        <!-- Silový trénink -->
+                <!-- Silový trénink -->
         <div id="strength_fields">
-            <label for="weight" id="weight_label">Váha (kg):</label>
-            <input
-                type="text"
-                id="weight"
-                name="weight"
-                value="{{ last_weight }}"
-                inputmode="decimal"
-                placeholder="kg"
-            >
+            <div id="weight_section">
+                <label for="weight" id="weight_label">Váha (kg):</label>
+                <input
+                    type="text"
+                    id="weight"
+                    name="weight"
+                    value="{{ last_weight }}"
+                    inputmode="decimal"
+                    placeholder="kg"
+                >
+            </div>
 
-            <label for="reps">Opakování:</label>
-            <input
-                type="text"
-                id="reps"
-                name="reps"
-                inputmode="numeric"
-                placeholder="opakování"
-            >
+            <div id="reps_section">
+                <label for="reps">Opakování:</label>
+                <input
+                    type="text"
+                    id="reps"
+                    name="reps"
+                    inputmode="numeric"
+                    placeholder="opakování"
+                >
+            </div>
+
+            <div id="speed_section" style="display: none;">
+                <label for="speed_custom">Rychlost (km/h):</label>
+                <input
+                    type="text"
+                    id="speed_custom"
+                    name="speed"
+                    inputmode="decimal"
+                    placeholder="km/h"
+                >
+            </div>
 
             <label for="set">Série:</label>
             <input
@@ -258,7 +346,19 @@
                     placeholder="např. červená, modrá"
                 >
             </div>
+
+            <div id="note_section" style="display: none;">
+                <label for="note">Poznámka:</label>
+                <textarea
+                    id="note"
+                    name="note"
+                    rows="2"
+                    placeholder="Tvoje poznámka ke cviku..."
+                    style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;"
+                ></textarea>
+            </div>
         </div>
+
 
         <!-- Kardio trénink -->
         <div id="cardio_fields">
@@ -296,33 +396,71 @@
         <a href="/" class="back-link">Zpět</a>
     </p>
 
-    <script>
+        <script>
+        const customExercises = {
+            {% for ce in custom_exercises %}
+            "{{ ce.name }}": {
+                has_weight: {{ ce.has_weight | tojson }},
+                has_reps: {{ ce.has_reps | tojson }},
+                has_speed: {{ ce.has_speed | tojson }},
+                has_note: {{ ce.has_note | tojson }},
+                id: {{ ce.id }}
+            },
+            {% endfor %}
+        };
+
+        function handleExerciseChange() {
+            const exercise = document.getElementById("exercise").value;
+            if (exercise === "__add_custom__") {
+                document.getElementById("custom-exercise-form").style.display = "block";
+                document.getElementById("custom_name").focus();
+            } else {
+                updatePage();
+            }
+        }
+
+        function hideCustomForm() {
+            document.getElementById("custom-exercise-form").style.display = "none";
+            document.getElementById("exercise").value = "{{ exercise }}";
+        }
+
         function toggleFields() {
             const exercise = document.getElementById("exercise").value;
             const strength = document.getElementById("strength_fields");
             const cardio = document.getElementById("cardio_fields");
             const bandField = document.getElementById("band_color_field");
-            const weightField = document.getElementById("weight");
-            const weightLabel = document.getElementById("weight_label");
+            const weightSection = document.getElementById("weight_section");
+            const repsSection = document.getElementById("reps_section");
+            const speedSection = document.getElementById("speed_section");
+            const noteSection = document.getElementById("note_section");
+
+            // Reset visibility
+            strength.style.display = "none";
+            cardio.style.display = "none";
+            bandField.style.display = "none";
+            weightSection.style.display = "block";
+            repsSection.style.display = "block";
+            speedSection.style.display = "none";
+            noteSection.style.display = "none";
 
             if (exercise === "Běh na pásu") {
-                strength.style.display = "none";
                 cardio.style.display = "block";
-                bandField.style.display = "none";
             } else if (exercise === "Shyb") {
                 strength.style.display = "block";
-                cardio.style.display = "none";
                 bandField.style.display = "block";
-                weightField.style.display = "none";
-                weightLabel.style.display = "none";
+                weightSection.style.display = "none";
+            } else if (customExercises[exercise]) {
+                strength.style.display = "block";
+                const ce = customExercises[exercise];
+                weightSection.style.display = ce.has_weight ? "block" : "none";
+                repsSection.style.display = ce.has_reps ? "block" : "none";
+                speedSection.style.display = ce.has_speed ? "block" : "none";
+                noteSection.style.display = ce.has_note ? "block" : "none";
             } else {
                 strength.style.display = "block";
-                cardio.style.display = "none";
-                bandField.style.display = "none";
-                weightField.style.display = "block";
-                weightLabel.style.display = "block";
             }
         }
+
 
         function updatePage() {
             const date = document.getElementById("date").value;

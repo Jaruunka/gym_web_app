@@ -804,7 +804,7 @@ def edit_workout(workout_id):
         flash("Záznam upraven!")
         return redirect(url_for("historie"))
 
-    ordered_exercises, favorite_exercises = get_exercise_choices()
+    ordered_exercises, favorite_exercises, custom_exercises = get_exercise_choices()
     return render_template(
         "edit_workout.html",
         workout=workout,

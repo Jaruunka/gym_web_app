@@ -6,437 +6,198 @@
     <title>Historie tréninků</title>
 
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 10px;
+        * {
+            box-sizing: border-box;
         }
 
-        .filter-form {
+        body {
+            margin: 0;
+            padding: 16px;
+            background: #f5f7f6;
+            color: #1f2937;
+            font-family: Arial, sans-serif;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .top-navigation {
             display: flex;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 24px;
         }
 
-        .filter-form select {
-            padding: 10px;
-            border: 1px solid #aaa;
-            border-radius: 6px;
-            font-size: 16px;
-            background-color: white;
-        }
-
-        .cancel-filter {
-            padding: 8px 10px;
-            background-color: #ddd;
-            color: black;
-            border-radius: 5px;
+        .back-link,
+        .all-workouts-link {
+            color: #166534;
+            font-weight: bold;
             text-decoration: none;
         }
 
-        .table-wrapper {
-            width: 100%;
-            overflow-x: auto;
-            padding-bottom: 130px;
-        }
-
-        table {
-            border-collapse: collapse;
-            min-width: max-content;
-        }
-
-        th,
-        td {
-            border: 1px solid black;
-            padding: 6px;
+        .all-workouts-link {
+            padding: 10px 12px;
+            background: #dcfce7;
+            border-radius: 10px;
             text-align: center;
         }
 
-        button {
-            padding: 7px 12px;
-            background-color: #ccc;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+        h1 {
+            margin: 0 0 22px;
+            font-size: 29px;
         }
 
-        button:hover {
-            background-color: #bbb;
-        }
-
-        .back-link {
-            display: inline-block;
-            padding: 7px 12px;
-            background-color: #ccc;
-            border-radius: 4px;
-            text-decoration: none;
-            color: black;
-        }
-
-        .actions {
+        .date-list {
             display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 6px;
+            flex-direction: column;
+            gap: 14px;
         }
 
-        .action-menu {
-            position: relative;
-        }
-
-        .action-menu summary {
-            padding: 4px;
-            cursor: pointer;
-            list-style: none;
-            font-size: 18px;
-        }
-
-        .action-menu summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .action-list {
-            position: absolute;
-            top: 32px;
-            right: 0;
-            z-index: 10;
-            min-width: 190px;
-            padding: 8px;
-            background-color: white;
-            border: 1px solid #aaa;
-            border-radius: 6px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-            text-align: left;
-        }
-
-        .action-list a {
-            display: block;
-            padding: 8px;
-            color: black;
+        .date-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 76px;
+            padding: 16px 18px;
+            background: white;
+            color: #1f2937;
+            border: 1px solid #d9e1dc;
+            border-radius: 14px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
             text-decoration: none;
-            border-radius: 4px;
-            white-space: nowrap;
         }
 
-        .action-list a:hover {
-            background-color: #eee;
+        .date-card:hover {
+            background: #f8faf9;
+            border-color: #22c55e;
         }
 
-        .delete-list a {
-            color: #c00000;
-        }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 900px;
-            height: 380px;
-            margin: 20px 0 30px;
-            padding: 10px;
-            box-sizing: border-box;
-            background-color: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-        .monthly-counter {
-            display: inline-block;
-            margin: 0 0 20px;
-            padding: 14px 18px;
-            background-color: #dcfce7;
-            color: #166534;
+        .today-card {
+            background: #dcfce7;
             border: 2px solid #22c55e;
-            border-radius: 10px;
-            font-size: 18px;
+        }
+
+        .date-main {
+            font-size: 19px;
             font-weight: bold;
+        }
+
+        .date-secondary {
+            margin-top: 5px;
+            color: #4b5563;
+            font-size: 14px;
+        }
+
+        .arrow {
+            color: #6b7280;
+            font-size: 28px;
+        }
+
+        .empty-message,
+        .flash-message {
+            padding: 18px;
+            background: white;
+            border-radius: 14px;
+        }
+
+        .flash-message {
+            margin-bottom: 16px;
+            color: #b42318;
+        }
+
+        .account {
+            margin-top: 30px;
+            color: #6b7280;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .account a {
+            color: #4b5563;
+        }
+
+        @media (max-width: 420px) {
+            .top-navigation {
+                align-items: flex-start;
+            }
+
+            .all-workouts-link {
+                max-width: 150px;
+            }
         }
     </style>
 
     {% include '_pwa_head.html' %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
+<div class="page">
 
-{% if current_user.is_authenticated %}
-    <p>
-        Jsi přihlášen(a) jako {{ current_user.email }}.
-        <a href="{{ url_for('logout') }}">Odhlásit se</a>
-    </p>
-{% else %}
-    <p>
-        <a href="{{ url_for('login') }}">Přihlásit se</a> |
-        <a href="{{ url_for('register') }}">Registrovat</a>
-    </p>
-{% endif %}
-
-<a href="/" class="back-link">Zpět</a>
-
-<h1>Historie tréninků</h1>
-<div class="monthly-counter">
-    {{ current_month_name }} – počet tréninků:
-    {{ monthly_workout_count }}
-</div>
-
-<form
-    class="filter-form"
-    action="{{ url_for('historie') }}"
-    method="get"
->
-    <label for="exercise-filter">
-        <strong>Zobrazit cvik:</strong>
-    </label>
-
-    <select
-        id="exercise-filter"
-        name="exercise"
-        onchange="this.form.submit()"
-    >
-        <option value="">Všechny cviky</option>
-
-        {% for exercise in all_exercises %}
-            <option
-                value="{{ exercise }}"
-                {% if exercise == selected_exercise %}selected{% endif %}
-            >
-                {{ exercise }}
-            </option>
-        {% endfor %}
-    </select>
-
-    {% if selected_exercise %}
-        <a
-            class="cancel-filter"
-            href="{{ url_for('historie') }}"
-        >
-            Zrušit filtr
+    <nav class="top-navigation">
+        <a class="back-link" href="{{ url_for('index') }}">
+            ← Zpět
         </a>
-    {% endif %}
-</form>
 
-{% if selected_exercise and chart_labels %}
-    <h2>Vývoj výkonu – {{ selected_exercise }}</h2>
+        <a
+            class="all-workouts-link"
+            href="{{ url_for('vsechny_treninky') }}"
+        >
+            Všechny tréninky
+        </a>
+    </nav>
 
-    <div class="chart-container">
-        <canvas id="progressChart"></canvas>
-    </div>
-{% elif selected_exercise %}
-    <p>Pro tento cvik nejsou k dispozici údaje o váze.</p>
-{% endif %}
+    <h1>Historie tréninků</h1>
 
-<form action="{{ url_for('export_excel') }}" method="get">
-    <button type="submit">Export do Excelu</button>
-</form>
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <div class="flash-message">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
 
-<br>
-
-{% if table_data %}
-    <div class="table-wrapper">
-        <table>
-            <tr>
-                <th>Datum</th>
-
-                {% for ex in exercises %}
-                    <th colspan="2">{{ ex }}</th>
-                {% endfor %}
-
-                <th>Akce</th>
-            </tr>
-
-            <tr>
-                <th></th>
-
-                {% for ex in exercises %}
-                    <th>Váha</th>
-                    <th>Opakování</th>
-                {% endfor %}
-
-                <th></th>
-            </tr>
-
-            {% for row in table_data %}
-                <tr>
-                    <td>{{ row.date }}</td>
-
-                    {% for ex in exercises %}
-                        <td>
-                            {{ row[ex ~ '_weight'] if row[ex ~ '_weight'] is not none else '' }}
-                        </td>
-
-                        <td>
-                            {{ row[ex ~ '_reps'] if row[ex ~ '_reps'] is not none else '' }}
-                        </td>
-                    {% endfor %}
-
-                    <td>
-                        {% if row.workout_actions %}
-                            <div class="actions">
-
-                                <details class="action-menu">
-                                    <summary title="Upravit">✏️</summary>
-
-                                    <div class="action-list">
-                                        {% for action in row.workout_actions %}
-                                            <a href="{{ url_for(
-                                                'edit_workout',
-                                                workout_id=action.id
-                                            ) }}">
-                                                {{ action.label }}
-                                            </a>
-                                        {% endfor %}
-                                    </div>
-                                </details>
-
-                                <details class="action-menu">
-                                    <summary title="Smazat">🗑️</summary>
-
-                                    <div class="action-list delete-list">
-                                        {% for action in row.workout_actions %}
-                                            <a
-                                                href="{{ url_for(
-                                                    'delete_workout',
-                                                    workout_id=action.id
-                                                ) }}"
-                                                onclick="return confirm(
-                                                    'Opravdu chceš smazat: {{ action.label }}?'
-                                                )"
-                                            >
-                                                {{ action.label }}
-                                            </a>
-                                        {% endfor %}
-                                    </div>
-                                </details>
-
+    {% if workout_dates %}
+        <div class="date-list">
+            {% for workout_date in workout_dates %}
+                <a
+                    class="date-card {% if workout_date == today_iso %}today-card{% endif %}"
+                    href="{{ url_for(
+                        'trenink_dne',
+                        date_value=workout_date
+                    ) }}"
+                >
+                    <div>
+                        {% if workout_date == today_iso %}
+                            <div class="date-main">Dnešní trénink</div>
+                            <div class="date-secondary">
+                                {{ workout_date|czech_date }}
+                            </div>
+                        {% else %}
+                            <div class="date-main">
+                                {{ workout_date|czech_date }}
                             </div>
                         {% endif %}
-                    </td>
-                </tr>
+                    </div>
+
+                    <span class="arrow">›</span>
+                </a>
             {% endfor %}
-        </table>
+        </div>
+    {% else %}
+        <p class="empty-message">
+            Zatím nemáš uložený žádný trénink.
+        </p>
+    {% endif %}
+
+    <div class="account">
+        Přihlášena jako {{ current_user.email }}
+        ·
+        <a href="{{ url_for('logout') }}">Odhlásit se</a>
     </div>
-{% else %}
-    <p>Pro vybraný cvik zatím nejsou žádné záznamy.</p>
-{% endif %}
 
-{% if selected_exercise and chart_labels %}
-<script>
-    const chartLabels = {{ chart_labels | tojson }};
-    const chartWeights = {{ chart_weights | tojson }};
-    const chartReps = {{ chart_reps | tojson }};
-
-    const repsTargetBand = {
-        id: "repsTargetBand",
-        beforeDatasetsDraw(chart) {
-            const { ctx, chartArea, scales } = chart;
-            const repsScale = scales.repsAxis;
-
-            if (!chartArea || !repsScale) {
-                return;
-            }
-
-            const bandStart = repsScale.getPixelForValue(8);
-            const bandEnd = repsScale.getPixelForValue(12);
-            const top = Math.max(chartArea.top, Math.min(bandStart, bandEnd));
-            const bottom = Math.min(chartArea.bottom, Math.max(bandStart, bandEnd));
-
-            if (bottom <= top) {
-                return;
-            }
-
-            ctx.save();
-            ctx.fillStyle = "rgba(34, 197, 94, 0.14)";
-            ctx.fillRect(
-                chartArea.left,
-                top,
-                chartArea.right - chartArea.left,
-                bottom - top
-            );
-            ctx.restore();
-        }
-    };
-
-    new Chart(
-        document.getElementById("progressChart"),
-        {
-            type: "line",
-
-            plugins: [repsTargetBand],
-
-            data: {
-                labels: chartLabels,
-
-                datasets: [
-                    {
-                        label: "Nejvyšší váha (kg)",
-                        data: chartWeights,
-                        borderColor: "#2563eb",
-                        backgroundColor: "#2563eb",
-                        yAxisID: "weightAxis",
-                        tension: 0.25,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    },
-                    {
-                        label: "Počet opakování",
-                        data: chartReps,
-                        borderColor: "#dc2626",
-                        backgroundColor: "#dc2626",
-                        yAxisID: "repsAxis",
-                        tension: 0.25,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    }
-                ]
-            },
-
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-
-                interaction: {
-                    mode: "index",
-                    intersect: false
-                },
-
-                scales: {
-                    weightAxis: {
-                        type: "linear",
-                        position: "left",
-                        beginAtZero: false,
-                        title: {
-                            display: true,
-                            text: "Váha (kg)"
-                        }
-                    },
-
-                    repsAxis: {
-                        type: "linear",
-                        position: "right",
-                        beginAtZero: true,
-                        suggestedMax: 12,
-                        ticks: {
-                            precision: 0
-                        },
-                        grid: {
-                            drawOnChartArea: false
-                        },
-                        title: {
-                            display: true,
-                            text: "Počet opakování"
-                        }
-                    },
-
-                    x: {
-                        title: {
-                            display: true,
-                            text: "Datum"
-                        }
-                    }
-                }
-            }
-        }
-    );
-</script>
-{% endif %}
+</div>
 
 {% include '_pwa_scripts.html' %}
 </body>

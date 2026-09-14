@@ -644,7 +644,191 @@ def zadat():
 @app.route("/historie")
 @login_required
 def historie():
-    selected_exercise = request.args.get("exercise", "").strip()
+    workout_dates = [
+        str(row[0])
+        for row in db.session.query(Workout.date)
+        .filter(Workout.user_id == current_user.id)
+        .distinct()
+        .order_by(Workout.date.desc())
+        .all()
+    ]
+
+    return render_template(
+        "historie.html",
+        workout_dates=workout_dates,
+        today_iso=date.today().isoformat()
+    )
+
+
+@app.route("/historie/den/<date_value>")
+@login_required
+def trenink_dne(date_value):
+    workouts = Workout.query.filter_by(
+        user_id=current_user.id,
+        date=date_value
+    ).order_by(
+        Workout.id.asc()
+    ).all()
+
+    if not workouts:
+        flash("Pro tento den nebyl nalezen žádný trénink.")
+        return redirect(url_for("historie"))
+
+    grouped = {}
+
+    for workout in workouts:
+        grouped.setdefault(workout.exercise, []).append(workout)
+
+    exercise_groups = [
+        {
+            "name": exercise_name,
+            "workouts": exercise_workouts
+        }
+        for exercise_name, exercise_workouts in grouped.items()
+    ]
+
+    return render_template(
+        "trenink_dne.html",
+        selected_date=date_value,
+        exercise_groups=exercise_groups
+    )
+
+
+@app.route("/historie/cvik/<path:exercise>")
+@login_required
+def detail_cviku(exercise):
+    workouts = Workout.query.filter_by(
+        user_id=current_user.id,
+        exercise=exercise
+    ).order_by(
+        Workout.date.desc(),
+        Workout.set_number.asc(),
+        Workout.id.asc()
+    ).all()
+
+    if not workouts:
+        flash("Pro tento cvik nebyly nalezeny žádné záznamy.")
+        return redirect(url_for("historie"))
+
+    grouped_dates = {}
+
+    for workout in workouts:
+        grouped_dates.setdefault(
+            str(workout.date),
+            []
+        ).append(workout)
+
+    date_groups = [
+        {
+            "date": workout_date,
+            "workouts": date_workouts
+        }
+        for workout_date, date_workouts in grouped_dates.items()
+    ]
+
+    workouts_with_weight = [
+        workout
+        for workout in workouts
+        if workout.weight is not None
+    ]
+
+    workouts_with_reps = [
+        workout
+        for workout in workouts
+        if workout.reps is not None
+    ]
+
+    workouts_with_speed = [
+        workout
+        for workout in workouts
+        if workout.speed is not None
+    ]
+
+    if workouts_with_weight:
+        personal_record = max(
+            workouts_with_weight,
+            key=lambda workout: (
+                workout.weight,
+                workout.reps or 0
+            )
+        )
+    elif workouts_with_reps:
+        personal_record = max(
+            workouts_with_reps,
+            key=lambda workout: workout.reps
+        )
+    elif workouts_with_speed:
+        personal_record = max(
+            workouts_with_speed,
+            key=lambda workout: workout.speed
+        )
+    else:
+        personal_record = None
+
+    best_by_date = {}
+
+    for workout in workouts:
+        if workout.weight is None and workout.reps is None:
+            continue
+
+        date_key = str(workout.date)
+        current_best = best_by_date.get(date_key)
+
+        workout_score = (
+            workout.weight if workout.weight is not None else -1,
+            workout.reps if workout.reps is not None else -1
+        )
+
+        if current_best is None:
+            best_by_date[date_key] = workout
+            continue
+
+        current_score = (
+            current_best.weight
+            if current_best.weight is not None
+            else -1,
+            current_best.reps
+            if current_best.reps is not None
+            else -1
+        )
+
+        if workout_score > current_score:
+            best_by_date[date_key] = workout
+
+    chart_labels = []
+    chart_weights = []
+    chart_reps = []
+
+    for date_key in sorted(best_by_date):
+        best_workout = best_by_date[date_key]
+
+        chart_labels.append(date_key)
+        chart_weights.append(
+            float(best_workout.weight)
+            if best_workout.weight is not None
+            else None
+        )
+        chart_reps.append(best_workout.reps)
+
+    return render_template(
+        "detail_cviku.html",
+        exercise=exercise,
+        personal_record=personal_record,
+        date_groups=date_groups,
+        chart_labels=chart_labels,
+        chart_weights=chart_weights,
+        chart_reps=chart_reps
+    )
+
+
+@app.route("/historie/vse")
+@login_required
+def vsechny_treninky():
+    selected_exercise = request.args.get(
+        "exercise",
+        ""
+    ).strip()
+
     today = date.today()
     current_month_prefix = today.strftime("%Y-%m")
 
@@ -656,7 +840,9 @@ def historie():
 
     current_month_name = month_names[today.month - 1]
 
-    workout_dates = db.session.query(Workout.date).filter(
+    workout_dates = db.session.query(
+        Workout.date
+    ).filter(
         Workout.user_id == current_user.id
     ).all()
 
@@ -666,7 +852,9 @@ def historie():
         if str(row[0]).startswith(current_month_prefix)
     }
 
-    monthly_workout_count = len(current_month_workout_dates)
+    monthly_workout_count = len(
+        current_month_workout_dates
+    )
 
     all_exercises = [
         row[0]
@@ -712,7 +900,8 @@ def historie():
                 or workout.weight > current_best.weight
                 or (
                     workout.weight == current_best.weight
-                    and (workout.reps or 0) > (current_best.reps or 0)
+                    and (workout.reps or 0)
+                    > (current_best.reps or 0)
                 )
             ):
                 best_by_date[date_key] = workout
@@ -721,10 +910,15 @@ def historie():
             best_workout = best_by_date[date_key]
 
             chart_labels.append(date_key)
-            chart_weights.append(float(best_workout.weight))
-            chart_reps.append(best_workout.reps or 0)
+            chart_weights.append(
+                float(best_workout.weight)
+            )
+            chart_reps.append(
+                best_workout.reps or 0
+            )
+
     return render_template(
-        "historie.html",
+        "vsechny_treninky.html",
         table_data=table_data,
         exercises=exercises,
         all_exercises=all_exercises,
@@ -735,6 +929,7 @@ def historie():
         current_month_name=current_month_name,
         monthly_workout_count=monthly_workout_count
     )
+
 @app.route("/export_excel")
 @login_required
 def export_excel():

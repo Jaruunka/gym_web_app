@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trénink {{ selected_date|czech_date }}</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            background: #f5f7f6;
+            color: #1f2937;
+            font-family: Arial, sans-serif;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .top-link {
+            display: inline-block;
+            margin-bottom: 18px;
+            color: #166534;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        h1 {
+            margin: 0 0 22px;
+            font-size: 27px;
+        }
+
+        .exercise-card {
+            margin-bottom: 18px;
+            overflow: hidden;
+            background: white;
+            border: 1px solid #d9e1dc;
+            border-radius: 14px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .exercise-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 58px;
+            padding: 14px 16px;
+            background: #dcfce7;
+            color: #166534;
+            font-size: 19px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .exercise-title:hover {
+            background: #c9f7d8;
+        }
+
+        .series-list {
+            padding: 4px 14px;
+        }
+
+        .series-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 58px;
+            padding: 12px 4px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #1f2937;
+            text-decoration: none;
+        }
+
+        .series-row:last-child {
+            border-bottom: none;
+        }
+
+        .series-row:hover {
+            background: #f8faf9;
+        }
+
+        .series-number {
+            min-width: 72px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .series-values {
+            flex: 1;
+            padding: 0 12px;
+            font-size: 17px;
+            line-height: 1.4;
+        }
+
+        .arrow {
+            color: #6b7280;
+            font-size: 22px;
+        }
+
+        .empty-message {
+            padding: 24px;
+            background: white;
+            border-radius: 14px;
+            text-align: center;
+        }
+    </style>
+
+    {% include '_pwa_head.html' %}
+</head>
+
+<body>
+<div class="page">
+
+    <a class="top-link" href="{{ url_for('historie') }}">
+        ← Zpět na historii
+    </a>
+
+    <h1>Trénink {{ selected_date|czech_date }}</h1>
+
+    {% if exercise_groups %}
+        {% for group in exercise_groups %}
+            <section class="exercise-card">
+
+                <a
+                    class="exercise-title"
+                    href="{{ url_for('detail_cviku', exercise=group.name) }}"
+                >
+                    <span>{{ group.name }}</span>
+                    <span>›</span>
+                </a>
+
+                <div class="series-list">
+                    {% for workout in group.workouts %}
+                        <a
+                            class="series-row"
+                            href="{{ url_for(
+                                'edit_workout',
+                                workout_id=workout.id
+                            ) }}"
+                        >
+                            <span class="series-number">
+                                {% if workout.exercise == 'Běh na pásu' %}
+                                    Kardio
+                                {% else %}
+                                    {{ workout.set_number or loop.index }}. série
+                                {% endif %}
+                            </span>
+
+                            <span class="series-values">
+                                {% if workout.exercise == 'Běh na pásu' %}
+                                    {{ workout.minutes }} min
+                                    · {{ workout.speed|number }} km/h
+                                    · sklon {{ workout.incline|number }} %
+                                {% else %}
+                                    {% if workout.weight is not none %}
+                                        {{ workout.weight|number }} kg
+                                    {% endif %}
+
+                                    {% if workout.reps is not none %}
+                                        × {{ workout.reps }}
+                                    {% endif %}
+
+                                    {% if workout.speed is not none %}
+                                        · {{ workout.speed|number }} km/h
+                                    {% endif %}
+
+                                    {% if workout.band_color %}
+                                        · guma {{ workout.band_color }}
+                                    {% endif %}
+
+                                    {% if workout.note %}
+                                        · {{ workout.note }}
+                                    {% endif %}
+                                {% endif %}
+                            </span>
+
+                            <span class="arrow">›</span>
+                        </a>
+                    {% endfor %}
+                </div>
+
+            </section>
+        {% endfor %}
+    {% else %}
+        <p class="empty-message">
+            Pro tento den nejsou uložené žádné cviky.
+        </p>
+    {% endif %}
+
+</div>
+
+{% include '_pwa_scripts.html' %}
+</body>
+</html>

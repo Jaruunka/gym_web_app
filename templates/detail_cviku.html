@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ exercise }} – pokrok</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            background: #f5f7f6;
+            color: #1f2937;
+            font-family: Arial, sans-serif;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        .top-link {
+            display: inline-block;
+            margin-bottom: 18px;
+            color: #166534;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        h1 {
+            margin: 0 0 20px;
+            font-size: 28px;
+        }
+
+        .pr-card {
+            margin-bottom: 20px;
+            padding: 18px;
+            background: #dcfce7;
+            border: 2px solid #22c55e;
+            border-radius: 14px;
+        }
+
+        .pr-label {
+            margin-bottom: 6px;
+            color: #166534;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .pr-value {
+            color: #14532d;
+            font-size: 23px;
+            font-weight: bold;
+        }
+
+        .chart-card {
+            height: 360px;
+            margin-bottom: 24px;
+            padding: 14px;
+            background: white;
+            border: 1px solid #d9e1dc;
+            border-radius: 14px;
+        }
+
+        h2 {
+            margin: 26px 0 14px;
+            font-size: 21px;
+        }
+
+        .date-card {
+            margin-bottom: 14px;
+            overflow: hidden;
+            background: white;
+            border: 1px solid #d9e1dc;
+            border-radius: 14px;
+        }
+
+        .date-title {
+            padding: 13px 16px;
+            background: #eef2f0;
+            font-size: 17px;
+            font-weight: bold;
+        }
+
+        .series-list {
+            padding: 4px 14px;
+        }
+
+        .series-row {
+            display: flex;
+            align-items: center;
+            min-height: 58px;
+            padding: 12px 4px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #1f2937;
+            text-decoration: none;
+        }
+
+        .series-row:last-child {
+            border-bottom: none;
+        }
+
+        .series-row:hover {
+            background: #f8faf9;
+        }
+
+        .series-number {
+            min-width: 72px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .series-values {
+            flex: 1;
+            padding: 0 12px;
+            font-size: 17px;
+            line-height: 1.4;
+        }
+
+        .arrow {
+            color: #6b7280;
+            font-size: 22px;
+        }
+
+        .empty-message {
+            padding: 20px;
+            background: white;
+            border-radius: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .chart-card {
+                height: 310px;
+                padding: 8px;
+            }
+        }
+    </style>
+
+    {% include '_pwa_head.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+<div class="page">
+
+    <a class="top-link" href="{{ url_for('historie') }}">
+        ← Zpět na historii
+    </a>
+
+    <h1>{{ exercise }}</h1>
+
+    {% if personal_record %}
+        <div class="pr-card">
+            <div class="pr-label">Osobní rekord</div>
+
+            <div class="pr-value">
+                {% if personal_record.weight is not none %}
+                    {{ personal_record.weight|number }} kg
+                {% endif %}
+
+                {% if personal_record.reps is not none %}
+                    × {{ personal_record.reps }}
+                {% endif %}
+
+                {% if personal_record.speed is not none
+                      and personal_record.weight is none %}
+                    {{ personal_record.speed|number }} km/h
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if chart_labels %}
+        <div class="chart-card">
+            <canvas id="progressChart"></canvas>
+        </div>
+    {% else %}
+        <p class="empty-message">
+            Pro graf zatím není dostatek údajů.
+        </p>
+    {% endif %}
+
+    <h2>Předchozí tréninky</h2>
+
+    {% if date_groups %}
+        {% for group in date_groups %}
+            <section class="date-card">
+                <div class="date-title">
+                    {{ group.date|czech_date }}
+                </div>
+
+                <div class="series-list">
+                    {% for workout in group.workouts %}
+                        <a
+                            class="series-row"
+                            href="{{ url_for(
+                                'edit_workout',
+                                workout_id=workout.id
+                            ) }}"
+                        >
+                            <span class="series-number">
+                                {% if workout.exercise == 'Běh na pásu' %}
+                                    Kardio
+                                {% else %}
+                                    {{ workout.set_number or loop.index }}. série
+                                {% endif %}
+                            </span>
+
+                            <span class="series-values">
+                                {% if workout.exercise == 'Běh na pásu' %}
+                                    {{ workout.minutes }} min
+                                    · {{ workout.speed|number }} km/h
+                                    · sklon {{ workout.incline|number }} %
+                                {% else %}
+                                    {% if workout.weight is not none %}
+                                        {{ workout.weight|number }} kg
+                                    {% endif %}
+
+                                    {% if workout.reps is not none %}
+                                        × {{ workout.reps }}
+                                    {% endif %}
+
+                                    {% if workout.speed is not none %}
+                                        · {{ workout.speed|number }} km/h
+                                    {% endif %}
+
+                                    {% if workout.band_color %}
+                                        · guma {{ workout.band_color }}
+                                    {% endif %}
+
+                                    {% if workout.note %}
+                                        · {{ workout.note }}
+                                    {% endif %}
+                                {% endif %}
+                            </span>
+
+                            <span class="arrow">›</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endfor %}
+    {% else %}
+        <p class="empty-message">Zatím tu nejsou žádné záznamy.</p>
+    {% endif %}
+
+</div>
+
+{% if chart_labels %}
+<script>
+    const chartLabels = {{ chart_labels|tojson }};
+    const chartWeights = {{ chart_weights|tojson }};
+    const chartReps = {{ chart_reps|tojson }};
+
+    const repsTargetBand = {
+        id: "repsTargetBand",
+
+        beforeDatasetsDraw(chart) {
+            const {ctx, chartArea, scales} = chart;
+            const scale = scales.repsAxis;
+
+            if (!chartArea || !scale) {
+                return;
+            }
+
+            const firstPoint = scale.getPixelForValue(8);
+            const secondPoint = scale.getPixelForValue(12);
+            const top = Math.max(
+                chartArea.top,
+                Math.min(firstPoint, secondPoint)
+            );
+            const bottom = Math.min(
+                chartArea.bottom,
+                Math.max(firstPoint, secondPoint)
+            );
+
+            ctx.save();
+            ctx.fillStyle = "rgba(34, 197, 94, 0.14)";
+            ctx.fillRect(
+                chartArea.left,
+                top,
+                chartArea.right - chartArea.left,
+                bottom - top
+            );
+            ctx.restore();
+        }
+    };
+
+    new Chart(document.getElementById("progressChart"), {
+        type: "line",
+        plugins: [repsTargetBand],
+
+        data: {
+            labels: chartLabels,
+            datasets: [
+                {
+                    label: "Nejvyšší váha (kg)",
+                    data: chartWeights,
+                    borderColor: "#2563eb",
+                    backgroundColor: "#2563eb",
+                    yAxisID: "weightAxis",
+                    tension: 0.25,
+                    pointRadius: 5
+                },
+                {
+                    label: "Počet opakování",
+                    data: chartReps,
+                    borderColor: "#dc2626",
+                    backgroundColor: "#dc2626",
+                    yAxisID: "repsAxis",
+                    tension: 0.25,
+                    pointRadius: 5
+                }
+            ]
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+
+            scales: {
+                weightAxis: {
+                    type: "linear",
+                    position: "left",
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: "Váha (kg)"
+                    }
+                },
+
+                repsAxis: {
+                    type: "linear",
+                    position: "right",
+                    beginAtZero: true,
+                    suggestedMax: 12,
+                    ticks: {
+                        precision: 0
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    title: {
+                        display: true,
+                        text: "Opakování"
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+
+{% include '_pwa_scripts.html' %}
+</body>
+</html>

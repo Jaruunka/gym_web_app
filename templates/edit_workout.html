@@ -3,156 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upravit záznam</title>
+    <title>Upravit sérii</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            background: #f5f7f6;
+            color: #1f2937;
+            font-family: Arial, sans-serif;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #166534;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        .exercise-name {
+            margin: 0 0 22px;
+            color: #6b7280;
+            font-size: 17px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            padding: 12px 14px;
+            background: #fee2e2;
+            color: #991b1b;
+            border-radius: 10px;
+        }
+
+        .edit-card {
+            padding: 18px;
+            background: white;
+            border: 1px solid #d9e1dc;
+            border-radius: 14px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            min-height: 48px;
+            padding: 10px 12px;
+            background: white;
+            border: 1px solid #9ca3af;
+            border-radius: 9px;
+            font-size: 17px;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #22c55e;
+            outline: 2px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .save-button {
+            width: 100%;
+            min-height: 52px;
+            margin-top: 6px;
+            padding: 13px;
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .save-button:hover {
+            background: #15803d;
+        }
+
+        .delete-section {
+            margin-top: 38px;
+            padding-top: 24px;
+            border-top: 1px solid #d1d5db;
+        }
+
+        .delete-button {
+            display: block;
+            width: 100%;
+            min-height: 52px;
+            padding: 15px;
+            background: #dc2626;
+            color: white;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 17px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .delete-button:hover {
+            background: #b91c1c;
+        }
+    </style>
 
     {% include '_pwa_head.html' %}
 </head>
 
 <body>
+<div class="page">
 
-{% if current_user.is_authenticated %}
-    <p>
-        Jsi přihlášen(a) jako {{ current_user.email }}.
-        <a href="{{ url_for('logout') }}">Odhlásit se</a>
-    </p>
-{% endif %}
-
-<h1>Upravit záznam</h1>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, text in messages %}
-        <p style="color: #b42318;">{{ text }}</p>
-    {% endfor %}
-{% endwith %}
-
-<form method="POST">
-    <label for="date">Datum:</label>
-    <input
-        type="date"
-        id="date"
-        name="date"
-        required
-        value="{{ workout.date }}"
+    <a
+        class="back-link"
+        href="{{ url_for(
+            'trenink_dne',
+            date_value=workout.date
+        ) }}"
     >
+        ← Zpět na trénink
+    </a>
 
-    <br><br>
+    <h1>Upravit sérii</h1>
+    <p class="exercise-name">{{ workout.exercise }}</p>
 
-    <label for="exercise">Cvik:</label>
-    <select
-        id="exercise"
-        name="exercise"
-        required
-        onchange="toggleFields()"
-    >
-        {% for cvik in silove_cviky %}
-            <option
-                value="{{ cvik }}"
-                {% if cvik == workout.exercise %}selected{% endif %}
-            >
-                {% if cvik in favorite_exercises %}✓ {% endif %}{{ cvik }}
-            </option>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, text in messages %}
+            <div class="message">{{ text }}</div>
         {% endfor %}
-    </select>
+    {% endwith %}
 
-    <br><br>
+    <form method="POST" class="edit-card">
 
-    <!-- Silový trénink -->
-    <div id="strength_fields">
-        <label for="weight">Váha (kg):</label>
-        <input
-            type="text"
-            id="weight"
-            name="weight"
-            inputmode="decimal"
-            value="{{ workout.weight or '' }}"
+        <div class="field">
+            <label for="date">Datum</label>
+            <input
+                type="date"
+                id="date"
+                name="date"
+                required
+                value="{{ workout.date }}"
+            >
+        </div>
+
+        <div class="field">
+            <label for="exercise">Cvik</label>
+            <select
+                id="exercise"
+                name="exercise"
+                required
+                onchange="toggleFields()"
+            >
+                {% for cvik in silove_cviky %}
+                    <option
+                        value="{{ cvik }}"
+                        {% if cvik == workout.exercise %}selected{% endif %}
+                    >
+                        {% if cvik in favorite_exercises %}✓ {% endif %}
+                        {{ cvik }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="strength_fields">
+
+            <div class="field" id="weight_field">
+                <label for="weight">Váha (kg)</label>
+                <input
+                    type="text"
+                    id="weight"
+                    name="weight"
+                    inputmode="decimal"
+                    value="{% if workout.weight is not none %}{{ workout.weight|number }}{% endif %}"
+                >
+            </div>
+
+            <div class="field">
+                <label for="reps">Opakování</label>
+                <input
+                    type="number"
+                    id="reps"
+                    name="reps"
+                    min="1"
+                    value="{% if workout.reps is not none %}{{ workout.reps }}{% endif %}"
+                >
+            </div>
+
+            <div class="field">
+                <label for="set_number">Číslo série</label>
+                <input
+                    type="number"
+                    id="set_number"
+                    name="set_number"
+                    min="1"
+                    value="{{ workout.set_number or 1 }}"
+                >
+            </div>
+
+            <div class="field" id="band_field">
+                <label for="band_color">Guma</label>
+                <input
+                    type="text"
+                    id="band_color"
+                    name="band_color"
+                    value="{{ workout.band_color or '' }}"
+                    placeholder="Například zelená"
+                >
+            </div>
+
+        </div>
+
+        <div id="cardio_fields">
+
+            <div class="field">
+                <label for="minutes">Čas (min)</label>
+                <input
+                    type="number"
+                    id="minutes"
+                    name="minutes"
+                    min="1"
+                    value="{% if workout.minutes is not none %}{{ workout.minutes }}{% endif %}"
+                >
+            </div>
+
+            <div class="field">
+                <label for="speed">Rychlost (km/h)</label>
+                <input
+                    type="text"
+                    id="speed"
+                    name="speed"
+                    inputmode="decimal"
+                    value="{% if workout.speed is not none %}{{ workout.speed|number }}{% endif %}"
+                >
+            </div>
+
+            <div class="field">
+                <label for="incline">Stoupání (%)</label>
+                <input
+                    type="text"
+                    id="incline"
+                    name="incline"
+                    inputmode="decimal"
+                    value="{% if workout.incline is not none %}{{ workout.incline|number }}{% endif %}"
+                >
+            </div>
+
+        </div>
+
+        <button class="save-button" type="submit">
+            Uložit změny
+        </button>
+    </form>
+
+    <div class="delete-section">
+        <a
+            class="delete-button"
+            href="{{ url_for(
+                'delete_workout',
+                workout_id=workout.id
+            ) }}"
+            onclick="return confirm(
+                'Opravdu chceš tuto sérii smazat?'
+            )"
         >
-
-        <br><br>
-
-        <label for="reps">Opakování:</label>
-        <input
-            type="number"
-            id="reps"
-            name="reps"
-            min="1"
-            value="{{ workout.reps or '' }}"
-        >
-
-        <br><br>
-
-        <label for="set_number">Série:</label>
-        <input
-            type="number"
-            id="set_number"
-            name="set_number"
-            min="1"
-            value="{{ workout.set_number or 1 }}"
-        >
+            Smazat sérii
+        </a>
     </div>
 
-    <!-- Kardio trénink -->
-    <div id="cardio_fields">
-        <label for="minutes">Čas (min):</label>
-        <input
-            type="number"
-            id="minutes"
-            name="minutes"
-            min="1"
-            value="{{ workout.minutes or '' }}"
-        >
-
-        <br><br>
-
-        <label for="speed">Rychlost (km/h):</label>
-        <input
-            type="number"
-            step="0.1"
-            id="speed"
-            name="speed"
-            min="0"
-            value="{{ workout.speed or '' }}"
-        >
-
-        <br><br>
-
-        <label for="incline">Stoupání (%):</label>
-        <input
-            type="number"
-            step="0.1"
-            id="incline"
-            name="incline"
-            min="0"
-            value="{{ workout.incline or '' }}"
-        >
-    </div>
-
-    <br>
-
-    <button type="submit">Uložit změny</button>
-</form>
-
-<br>
-
-<a
-    href="{{ url_for('historie') }}"
-    style="text-decoration: none; padding: 5px 10px; background-color: #ccc; border-radius: 4px;"
->
-    Zpět na historii
-</a>
+</div>
 
 <script>
     function toggleFields() {
         const exercise = document.getElementById("exercise").value;
-        const strength = document.getElementById("strength_fields");
-        const cardio = document.getElementById("cardio_fields");
+        const strengthFields =
+            document.getElementById("strength_fields");
+        const cardioFields =
+            document.getElementById("cardio_fields");
+        const weightField =
+            document.getElementById("weight_field");
+        const bandField =
+            document.getElementById("band_field");
 
-        if (exercise === "Běh na pásu") {
-            strength.style.display = "none";
-            cardio.style.display = "block";
-        } else {
-            strength.style.display = "block";
-            cardio.style.display = "none";
-        }
+        const isCardio = exercise === "Běh na pásu";
+        const isPullUp = exercise === "Shyb";
+
+        strengthFields.style.display =
+            isCardio ? "none" : "block";
+
+        cardioFields.style.display =
+            isCardio ? "block" : "none";
+
+        weightField.style.display =
+            isPullUp ? "none" : "block";
+
+        bandField.style.display =
+            isPullUp ? "block" : "none";
     }
 
     window.addEventListener("load", toggleFields);

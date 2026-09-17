@@ -548,6 +548,13 @@
         }
 
         document.getElementById("workout-form").addEventListener("submit", async event => {
+            // Online použijeme běžné odeslání formuláře. Prohlížeč tak přímo
+            // zobrazí odpověď po přesměrování a stránku nenačítá podruhé.
+            // JavaScriptový fetch potřebujeme pouze pro nouzový offline zápis.
+            if (navigator.onLine) {
+                return;
+            }
+
             event.preventDefault();
             const form = event.currentTarget;
             const submitButton = form.querySelector('button[type="submit"]');

@@ -541,11 +541,22 @@ def delete_custom_exercise(ce_id):
 @login_required
 def zadat():
     date_val = request.form.get("date") or request.args.get("date") or date.today().isoformat()
-    
-    # Získání seznamu cviků pro validaci a výběr
-    ordered_exercises, favorite_exercises, custom_exercises = get_exercise_choices()
-    
-    exercise_val = request.form.get("exercise") or request.args.get("exercise") or (ordered_exercises[0] if ordered_exercises else SILOVE_CVIKY[0])
+
+    if request.method == "POST":
+        exercise_val = request.form.get("exercise", "").strip()
+        # Při zápisu potřebujeme jen případné nastavení právě vybraného
+        # vlastního cviku, ne celý seřazený seznam a oblíbené položky.
+        custom_exercises = CustomExercise.query.filter_by(
+            user_id=current_user.id,
+            name=exercise_val,
+        ).all()
+        ordered_exercises = []
+        favorite_exercises = set()
+    else:
+        ordered_exercises, favorite_exercises, custom_exercises = get_exercise_choices()
+        exercise_val = request.args.get("exercise") or (
+            ordered_exercises[0] if ordered_exercises else SILOVE_CVIKY[0]
+        )
 
     message = ""
     next_set = 1
@@ -558,16 +569,20 @@ def zadat():
 
         next_set = last_set_today.set_number + 1 if last_set_today and last_set_today.set_number else 1
 
-        last_set_ever = Workout.query.filter_by(
-            exercise=exercise_val, user_id=current_user.id
-        ).order_by(Workout.id.desc()).first()
+        # Poslední váhu potřebujeme jen při otevření formuláře. Při ukládání
+        # série by tento dotaz zbytečně prodlužoval každý online zápis.
+        if request.method == "GET":
+            last_set_ever = Workout.query.filter_by(
+                exercise=exercise_val, user_id=current_user.id
+            ).order_by(Workout.id.desc()).first()
 
-        if last_set_ever and last_set_ever.weight:
-            last_weight = last_set_ever.weight
+            if last_set_ever and last_set_ever.weight:
+                last_weight = last_set_ever.weight
     else:
         next_set = None
 
     if request.method == "POST":
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
         try:
             if exercise_val == "Běh na pásu":
                 minutes = parse_positive_integer(request.form.get("minutes"), "čas")
@@ -618,11 +633,21 @@ def zadat():
                 )
                 message = f"Série {next_set} uložena!"
         except ValueError as error:
+            if is_ajax:
+                return jsonify({"ok": False, "message": str(error)}), 400
             flash(str(error), "error")
             return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 
         db.session.add(novy_trenink)
         db.session.commit()
+
+        if is_ajax:
+            return jsonify({
+                "ok": True,
+                "message": message,
+                "next_set": next_set + 1 if next_set is not None else None,
+            })
+
         flash(message, "success")
         return redirect(url_for("zadat", date=date_val, exercise=exercise_val))
 

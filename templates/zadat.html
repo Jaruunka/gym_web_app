@@ -518,7 +518,7 @@
             box.textContent = message;
         }
 
-        function prepareNextOfflineEntry() {
+        function prepareNextEntry(serverNextSet = null) {
             const exercise = document.getElementById("exercise").value;
 
             if (exercise === "Běh na pásu") {
@@ -532,7 +532,9 @@
 
             const setInput = document.getElementById("set");
             if (setInput) {
-                setInput.value = String((Number(setInput.value) || 0) + 1);
+                setInput.value = serverNextSet !== null
+                    ? String(serverNextSet)
+                    : String((Number(setInput.value) || 0) + 1);
             }
 
             ["reps", "speed_custom", "band_color", "note"].forEach(id => {
@@ -548,13 +550,6 @@
         }
 
         document.getElementById("workout-form").addEventListener("submit", async event => {
-            // Online použijeme běžné odeslání formuláře. Prohlížeč tak přímo
-            // zobrazí odpověď po přesměrování a stránku nenačítá podruhé.
-            // JavaScriptový fetch potřebujeme pouze pro nouzový offline zápis.
-            if (navigator.onLine) {
-                return;
-            }
-
             event.preventDefault();
             const form = event.currentTarget;
             const submitButton = form.querySelector('button[type="submit"]');
@@ -564,7 +559,10 @@
                 const response = await fetch(form.action || window.location.href, {
                     method: "POST",
                     body: new FormData(form),
-                    credentials: "same-origin"
+                    credentials: "same-origin",
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
                 });
 
                 const queued = response.headers.get("X-Gym-Queued") === "1";
@@ -572,21 +570,21 @@
                     showOfflineSaveConfirmation(
                         "Uloženo offline. Po připojení se záznam automaticky odešle."
                     );
-                    prepareNextOfflineEntry();
+                    prepareNextEntry();
                     return;
                 }
 
-                if (!response.ok) {
-                    throw new Error("Zápis se nepodařilo uložit.");
+                const result = await response.json();
+                if (!response.ok || !result.ok) {
+                    throw new Error(result.message || "Zápis se nepodařilo uložit.");
                 }
 
-                // Po běžném online uložení Flask přesměruje zpět na formulář.
-                // Fetch přesměrování následuje, proto načteme jeho cílovou URL.
-                window.location.assign(response.url || form.action || window.location.href);
+                showOfflineSaveConfirmation(result.message || "Série byla uložena.");
+                prepareNextEntry(result.next_set ?? null);
             } catch (error) {
                 showOfflineSaveConfirmation(
                     navigator.onLine
-                        ? "Zápis se nepodařilo uložit. Zkus to znovu."
+                        ? (error.message || "Zápis se nepodařilo uložit. Zkus to znovu.")
                         : "Zápis se nepodařilo uložit offline. Nezavírej stránku a zkus to znovu."
                 );
             } finally {

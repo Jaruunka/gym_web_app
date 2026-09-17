@@ -110,20 +110,32 @@
             text-align: left;
         }
 
-        .action-list a {
+        .action-list a,
+        .action-list button {
             display: block;
+            width: 100%;
             padding: 8px;
+            background: transparent;
             color: black;
+            border: none;
             text-decoration: none;
             border-radius: 4px;
             white-space: nowrap;
+            text-align: left;
+            font: inherit;
+            cursor: pointer;
         }
 
-        .action-list a:hover {
+        .action-list a:hover,
+        .action-list button:hover {
             background-color: #eee;
         }
 
-        .delete-list a {
+        .action-list form {
+            margin: 0;
+        }
+
+        .delete-list button {
             color: #c00000;
         }
         .chart-container {
@@ -291,17 +303,20 @@
 
                                     <div class="action-list delete-list">
                                         {% for action in row.workout_actions %}
-                                            <a
-                                                href="{{ url_for(
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for(
                                                     'delete_workout',
                                                     workout_id=action.id
                                                 ) }}"
-                                                onclick="return confirm(
+                                                onsubmit="return confirm(
                                                     'Opravdu chceš smazat: {{ action.label }}?'
                                                 )"
                                             >
-                                                {{ action.label }}
-                                            </a>
+                                                <button type="submit">
+                                                    {{ action.label }}
+                                                </button>
+                                            </form>
                                         {% endfor %}
                                     </div>
                                 </details>

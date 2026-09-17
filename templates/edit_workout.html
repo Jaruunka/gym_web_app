@@ -122,6 +122,8 @@
             font-size: 17px;
             font-weight: bold;
             text-decoration: none;
+            border: none;
+            cursor: pointer;
         }
 
         .delete-button:hover {
@@ -278,18 +280,20 @@
     </form>
 
     <div class="delete-section">
-        <a
-            class="delete-button"
-            href="{{ url_for(
+        <form
+            method="POST"
+            action="{{ url_for(
                 'delete_workout',
                 workout_id=workout.id
             ) }}"
-            onclick="return confirm(
+            onsubmit="return confirm(
                 'Opravdu chceš tuto sérii smazat?'
             )"
         >
-            Smazat sérii
-        </a>
+            <button class="delete-button" type="submit">
+                Smazat sérii
+            </button>
+        </form>
     </div>
 
 </div>

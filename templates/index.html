@@ -65,6 +65,25 @@
             background-color: #da2e1a;
         }
 
+        .connection-status {
+            display: none;
+            margin: 0;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background-color: #fff3cd;
+            color: #664d03;
+            font-size: 0.95rem;
+        }
+
+        .connection-status.visible {
+            display: block;
+        }
+
+        .connection-status.success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
         @media (max-width: 600px) {
             .container {
                 max-width: none;
@@ -88,6 +107,8 @@
 <body>
     <div class="container">
         <h1>Vítej na Gym Web App</h1>
+
+        <p id="connection-status" class="connection-status" role="status" aria-live="polite"></p>
 
         {% if current_user.is_authenticated %}
             <p>Jsi přihlášen(a) jako {{ current_user.email }}.</p>
@@ -115,5 +136,118 @@
     </div>
 
     {% include '_pwa_scripts.html' %}
+
+    <script>
+        (() => {
+            const statusElement = document.getElementById('connection-status');
+            let hideStatusTimer = null;
+
+            function showStatus(message, success = false, temporary = false) {
+                window.clearTimeout(hideStatusTimer);
+                statusElement.textContent = message;
+                statusElement.classList.add('visible');
+                statusElement.classList.toggle('success', success);
+
+                if (temporary) {
+                    hideStatusTimer = window.setTimeout(() => {
+                        if (navigator.onLine) {
+                            statusElement.classList.remove('visible', 'success');
+                        }
+                    }, 4500);
+                }
+            }
+
+            function sendToServiceWorker(message) {
+                if (!('serviceWorker' in navigator)) {
+                    return;
+                }
+
+                navigator.serviceWorker.ready.then(registration => {
+                    const worker = registration.active || navigator.serviceWorker.controller;
+                    if (worker) {
+                        worker.postMessage(message);
+                    }
+                });
+            }
+
+            function updateConnectionStatus() {
+                if (navigator.onLine) {
+                    sendToServiceWorker({ type: 'SYNC_OFFLINE_DATA' });
+                    statusElement.classList.remove('visible', 'success');
+                } else {
+                    showStatus('Jsi offline. Nové záznamy se odešlou po připojení.');
+                }
+            }
+
+            {% if current_user.is_authenticated %}
+                sendToServiceWorker({
+                    type: 'SET_USER_CONTEXT',
+                    userId: {{ current_user.id | tojson }}
+                });
+            {% else %}
+                sendToServiceWorker({ type: 'CLEAR_USER_CONTEXT' });
+            {% endif %}
+
+            window.addEventListener('online', updateConnectionStatus);
+            window.addEventListener('offline', updateConnectionStatus);
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.addEventListener('message', event => {
+                    const message = event.data || {};
+
+                    if (message.type === 'OFFLINE_REQUEST_QUEUED') {
+                        const queuedText = message.action === 'delete'
+                            ? 'Smazání je uložené a čeká na připojení.'
+                            : message.action === 'edit'
+                                ? 'Úprava je uložená a čeká na připojení.'
+                                : 'Záznam je uložený offline a čeká na odeslání.';
+                        showStatus(queuedText);
+                    }
+
+                    if (message.type === 'OFFLINE_SYNC_COMPLETE') {
+                        const count = Number(message.count) || 0;
+                        showStatus(
+                            count === 1
+                                ? 'Offline záznam byl synchronizován.'
+                                : `Synchronizováno offline záznamů: ${count}.`,
+                            true,
+                            true
+                        );
+                    }
+
+                    if (message.type === 'OFFLINE_SYNC_ERROR') {
+                        showStatus(
+                            'Jednu offline změnu se nepodařilo odeslat. Zůstává bezpečně uložená pro další pokus.'
+                        );
+                    }
+
+                    if (message.type === 'OFFLINE_CACHE_START') {
+                        showStatus(
+                            'Připravuji historii a grafy pro použití bez internetu…'
+                        );
+                    }
+
+                    if (
+                        message.type === 'OFFLINE_CACHE_READY' &&
+                        !message.unchanged
+                    ) {
+                        showStatus(
+                            'Historie, grafy i úpravy jsou připravené offline.',
+                            true,
+                            true
+                        );
+                    }
+
+                    if (message.type === 'OFFLINE_CACHE_PARTIAL') {
+                        showStatus(
+                            'Většina offline dat je připravená, ale několik stránek se nepodařilo aktualizovat.'
+                        );
+                    }
+                });
+            }
+
+            updateConnectionStatus();
+        })();
+    </script>
 </body>
 </html>

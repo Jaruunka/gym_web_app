@@ -2,6 +2,7 @@ import os
 import math
 import hmac
 import json
+import hashlib
 from urllib.request import Request, urlopen
 from datetime import date
 from collections import defaultdict
@@ -947,7 +948,106 @@ def export_excel():
         as_attachment=True
     )
 
-@app.route("/delete/<int:workout_id>")
+@app.route("/api/offline-manifest")
+@login_required
+def offline_manifest():
+    """Seznam stránek, které má PWA připravit pro práci bez internetu."""
+    workouts = Workout.query.filter_by(
+        user_id=current_user.id
+    ).order_by(Workout.id.asc()).all()
+
+    custom_exercises = CustomExercise.query.filter_by(
+        user_id=current_user.id
+    ).order_by(CustomExercise.id.asc()).all()
+
+    favorite_exercises = FavoriteExercise.query.filter_by(
+        user_id=current_user.id
+    ).order_by(FavoriteExercise.id.asc()).all()
+
+    workout_dates = sorted(
+        {str(workout.date) for workout in workouts},
+        reverse=True
+    )
+    exercises = sorted(
+        {workout.exercise for workout in workouts if workout.exercise}
+    )
+    available_exercises = sorted(
+        set(SILOVE_CVIKY) | {exercise.name for exercise in custom_exercises}
+    )
+
+    urls = [
+        url_for("index"),
+        url_for("zadat"),
+        url_for("historie"),
+        url_for("vsechny_treninky"),
+    ]
+
+    urls.extend(
+        url_for("trenink_dne", date_value=workout_date)
+        for workout_date in workout_dates
+    )
+    urls.extend(
+        url_for("detail_cviku", exercise=exercise)
+        for exercise in exercises
+    )
+    urls.extend(
+        url_for("edit_workout", workout_id=workout.id)
+        for workout in workouts
+    )
+    urls.extend(
+        url_for("zadat", exercise=exercise)
+        for exercise in available_exercises
+    )
+
+    version_payload = {
+        "workouts": [
+            [
+                workout.id,
+                str(workout.date),
+                workout.exercise,
+                workout.weight,
+                workout.reps,
+                workout.set_number,
+                workout.minutes,
+                workout.speed,
+                workout.incline,
+                workout.band_color,
+                workout.note,
+            ]
+            for workout in workouts
+        ],
+        "custom_exercises": [
+            [
+                exercise.id,
+                exercise.name,
+                exercise.has_weight,
+                exercise.has_reps,
+                exercise.has_speed,
+                exercise.has_note,
+            ]
+            for exercise in custom_exercises
+        ],
+        "favorites": [
+            [favorite.id, favorite.exercise]
+            for favorite in favorite_exercises
+        ],
+    }
+    version = hashlib.sha256(
+        json.dumps(
+            version_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()[:20]
+
+    return jsonify({
+        "version": version,
+        "urls": list(dict.fromkeys(urls)),
+    })
+
+
+@app.route("/delete/<int:workout_id>", methods=["POST"])
 @login_required
 def delete_workout(workout_id):
     workout = Workout.query.get_or_404(workout_id)
@@ -1009,11 +1109,13 @@ def edit_workout(workout_id):
 
 @app.route('/service-worker.js')
 def service_worker():
-    return send_from_directory(
+    response = send_from_directory(
         'static',
         'service-worker.js',
         mimetype='application/javascript'
     )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 
 @app.route('/pwa-test')

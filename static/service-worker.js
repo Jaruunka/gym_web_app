@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v6-light";
+const CACHE_VERSION = "v7-today-inline";
 const STATIC_CACHE = `gym-static-${CACHE_VERSION}`;
 const PAGE_CACHE_PREFIX = `gym-pages-${CACHE_VERSION}-user-`;
 const CHART_JS_URL =

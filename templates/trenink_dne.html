@@ -86,6 +86,97 @@
             background: #f8faf9;
         }
 
+        .series-editor {
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .series-editor:last-child {
+            border-bottom: none;
+        }
+
+        .series-editor summary {
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .series-editor summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .series-editor[open] .arrow {
+            transform: rotate(90deg);
+        }
+
+        .inline-actions {
+            padding: 4px 4px 16px;
+            background: #f8faf9;
+        }
+
+        .inline-edit-form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            padding: 12px;
+            background: white;
+            border: 1px solid #d9e1dc;
+            border-radius: 10px;
+        }
+
+        .inline-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .inline-field label {
+            color: #4b5563;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .inline-field input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .inline-field textarea {
+            width: 100%;
+            min-height: 70px;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font: inherit;
+            resize: vertical;
+        }
+
+        .inline-edit-form button,
+        .inline-delete-form button {
+            padding: 11px 14px;
+            border: 0;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .inline-edit-form button {
+            grid-column: 1 / -1;
+            background: #16a34a;
+        }
+
+        .inline-delete-form {
+            margin-top: 10px;
+        }
+
+        .inline-delete-form button {
+            width: 100%;
+            background: #dc2626;
+        }
+
         .series-number {
             min-width: 72px;
             color: #6b7280;
@@ -138,51 +229,131 @@
 
                 <div class="series-list">
                     {% for workout in group.workouts %}
-                        <a
-                            class="series-row"
-                            href="{{ url_for(
-                                'edit_workout',
-                                workout_id=workout.id
-                            ) }}"
-                        >
-                            <span class="series-number">
-                                {% if workout.exercise == 'Běh na pásu' %}
-                                    Kardio
-                                {% else %}
-                                    {{ workout.set_number or loop.index }}. série
-                                {% endif %}
-                            </span>
-
-                            <span class="series-values">
-                                {% if workout.exercise == 'Běh na pásu' %}
-                                    {{ workout.minutes }} min
-                                    · {{ workout.speed|number }} km/h
-                                    · sklon {{ workout.incline|number }} %
-                                {% else %}
-                                    {% if workout.weight is not none %}
-                                        {{ workout.weight|number }} kg
+                        <details class="series-editor">
+                            <summary class="series-row">
+                                <span class="series-number">
+                                    {% if workout.exercise == 'Běh na pásu' %}
+                                        Kardio
+                                    {% else %}
+                                        {{ workout.set_number or loop.index }}. série
                                     {% endif %}
+                                </span>
 
-                                    {% if workout.reps is not none %}
-                                        × {{ workout.reps }}
-                                    {% endif %}
-
-                                    {% if workout.speed is not none %}
+                                <span class="series-values">
+                                    {% if workout.exercise == 'Běh na pásu' %}
+                                        {{ workout.minutes }} min
                                         · {{ workout.speed|number }} km/h
+                                        · sklon {{ workout.incline|number }} %
+                                    {% else %}
+                                        {% if workout.weight is not none %}
+                                            {{ workout.weight|number }} kg
+                                        {% endif %}
+                                        {% if workout.reps is not none %}
+                                            × {{ workout.reps }}
+                                        {% endif %}
+                                        {% if workout.speed is not none %}
+                                            · {{ workout.speed|number }} km/h
+                                        {% endif %}
+                                        {% if workout.band_color %}
+                                            · guma {{ workout.band_color }}
+                                        {% endif %}
+                                        {% if workout.note %}
+                                            · {{ workout.note }}
+                                        {% endif %}
+                                    {% endif %}
+                                </span>
+
+                                <span class="arrow">›</span>
+                            </summary>
+
+                            <div class="inline-actions">
+                                <form
+                                    class="inline-edit-form"
+                                    method="POST"
+                                    action="{{ url_for('edit_workout', workout_id=workout.id) }}"
+                                >
+                                    <input type="hidden" name="date" value="{{ workout.date }}">
+                                    <input type="hidden" name="exercise" value="{{ workout.exercise }}">
+                                    <input type="hidden" name="return_to_day" value="1">
+
+                                    {% if workout.exercise == 'Běh na pásu' %}
+                                        <div class="inline-field">
+                                            <label>Čas (min)</label>
+                                            <input type="number" name="minutes" min="1" required value="{{ workout.minutes }}">
+                                        </div>
+                                        <div class="inline-field">
+                                            <label>Rychlost (km/h)</label>
+                                            <input type="text" name="speed" inputmode="decimal" required value="{{ workout.speed|number }}">
+                                        </div>
+                                        <div class="inline-field">
+                                            <label>Stoupání (%)</label>
+                                            <input type="text" name="incline" inputmode="decimal" required value="{{ workout.incline|number }}">
+                                        </div>
+                                    {% else %}
+                                        {% set custom = custom_exercise_settings.get(workout.exercise) %}
+                                        {% if custom %}
+                                            {% if custom.has_weight %}
+                                                <div class="inline-field">
+                                                    <label>Váha (kg)</label>
+                                                    <input type="text" name="weight" inputmode="decimal" required value="{% if workout.weight is not none %}{{ workout.weight|number }}{% endif %}">
+                                                </div>
+                                            {% endif %}
+                                            {% if custom.has_reps %}
+                                                <div class="inline-field">
+                                                    <label>Opakování</label>
+                                                    <input type="number" name="reps" min="1" required value="{{ workout.reps }}">
+                                                </div>
+                                            {% endif %}
+                                            {% if custom.has_speed %}
+                                                <div class="inline-field">
+                                                    <label>Rychlost (km/h)</label>
+                                                    <input type="text" name="speed" inputmode="decimal" required value="{% if workout.speed is not none %}{{ workout.speed|number }}{% endif %}">
+                                                </div>
+                                            {% endif %}
+                                            {% if custom.has_note %}
+                                                <div class="inline-field">
+                                                    <label>Poznámka</label>
+                                                    <textarea name="note">{{ workout.note or '' }}</textarea>
+                                                </div>
+                                            {% endif %}
+                                        {% elif workout.exercise != 'Shyb' %}
+                                            <div class="inline-field">
+                                                <label>Váha (kg)</label>
+                                                <input type="text" name="weight" inputmode="decimal" required value="{% if workout.weight is not none %}{{ workout.weight|number }}{% endif %}">
+                                            </div>
+                                        {% endif %}
+                                        {% if not custom %}
+                                            <div class="inline-field">
+                                                <label>Opakování</label>
+                                                <input type="number" name="reps" min="1" required value="{{ workout.reps }}">
+                                            </div>
+                                        {% endif %}
+                                        <div class="inline-field">
+                                            <label>Číslo série</label>
+                                            <input type="number" name="set_number" min="1" required value="{{ workout.set_number or 1 }}">
+                                        </div>
+                                        {% if workout.exercise == 'Shyb' %}
+                                            <div class="inline-field">
+                                                <label>Barva gumy</label>
+                                                <input type="text" name="band_color" value="{{ workout.band_color or '' }}">
+                                            </div>
+                                        {% endif %}
                                     {% endif %}
 
-                                    {% if workout.band_color %}
-                                        · guma {{ workout.band_color }}
-                                    {% endif %}
+                                    <button type="submit">Uložit změny</button>
+                                </form>
 
-                                    {% if workout.note %}
-                                        · {{ workout.note }}
-                                    {% endif %}
-                                {% endif %}
-                            </span>
-
-                            <span class="arrow">›</span>
-                        </a>
+                                <form
+                                    class="inline-delete-form"
+                                    method="POST"
+                                    action="{{ url_for('delete_workout', workout_id=workout.id) }}"
+                                    onsubmit="return confirm('Opravdu chceš tuto sérii smazat?')"
+                                >
+                                    <input type="hidden" name="return_to_day" value="1">
+                                    <button type="submit">Smazat sérii</button>
+                                </form>
+                            </div>
+                        </details>
                     {% endfor %}
                 </div>
 

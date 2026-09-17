@@ -688,10 +688,19 @@ def trenink_dne(date_value):
         for exercise_name, exercise_workouts in grouped.items()
     ]
 
+    custom_exercises = CustomExercise.query.filter_by(
+        user_id=current_user.id
+    ).all()
+    custom_exercise_settings = {
+        exercise.name: exercise
+        for exercise in custom_exercises
+    }
+
     return render_template(
         "trenink_dne.html",
         selected_date=date_value,
-        exercise_groups=exercise_groups
+        exercise_groups=exercise_groups,
+        custom_exercise_settings=custom_exercise_settings,
     )
 
 
@@ -975,10 +984,6 @@ def offline_manifest():
     if today_workouts:
         urls.append(url_for("trenink_dne", date_value=today_iso))
 
-    urls.extend(
-        url_for("edit_workout", workout_id=workout.id)
-        for workout in today_workouts
-    )
     version_payload = {
         "today": today_iso,
         "today_workouts": [
@@ -1041,9 +1046,17 @@ def delete_workout(workout_id):
     if workout.user_id != current_user.id:
         flash("Nemáš oprávnění mazat tento záznam!")
         return redirect(url_for("historie"))
+    workout_date = str(workout.date)
     db.session.delete(workout)
     db.session.commit()
     flash("Záznam smazán!")
+    if request.form.get("return_to_day") == "1":
+        remaining = Workout.query.filter_by(
+            user_id=current_user.id,
+            date=workout_date,
+        ).first()
+        if remaining:
+            return redirect(url_for("trenink_dne", date_value=workout_date))
     return redirect(url_for("historie"))
 
 @app.route("/edit/<int:workout_id>", methods=["GET", "POST"], endpoint="edit_workout")
@@ -1067,16 +1080,41 @@ def edit_workout(workout_id):
                 workout.set_number = None
                 workout.band_color = None
             else:
-                workout.weight = (
-                    None
-                    if workout.exercise == "Shyb"
-                    else parse_decimal(request.form.get("weight"), "váha")
-                )
-                workout.reps = parse_positive_integer(request.form.get("reps"), "opakování")
+                custom_exercise = CustomExercise.query.filter_by(
+                    user_id=current_user.id,
+                    name=workout.exercise,
+                ).first()
+
+                if custom_exercise:
+                    workout.weight = (
+                        parse_decimal(request.form.get("weight"), "váha")
+                        if custom_exercise.has_weight
+                        else None
+                    )
+                    workout.reps = (
+                        parse_positive_integer(request.form.get("reps"), "opakování")
+                        if custom_exercise.has_reps
+                        else None
+                    )
+                    workout.speed = (
+                        parse_decimal(request.form.get("speed"), "rychlost")
+                        if custom_exercise.has_speed
+                        else None
+                    )
+                    if custom_exercise.has_note and "note" in request.form:
+                        workout.note = request.form.get("note")
+                else:
+                    workout.weight = (
+                        None
+                        if workout.exercise == "Shyb"
+                        else parse_decimal(request.form.get("weight"), "váha")
+                    )
+                    workout.reps = parse_positive_integer(request.form.get("reps"), "opakování")
+                    workout.speed = None
+
                 workout.set_number = parse_positive_integer(request.form.get("set_number"), "série")
                 workout.band_color = request.form.get("band_color") if workout.exercise == "Shyb" else None
                 workout.minutes = None
-                workout.speed = None
                 workout.incline = None
         except ValueError as error:
             flash(str(error), "error")
@@ -1084,6 +1122,8 @@ def edit_workout(workout_id):
 
         db.session.commit()
         flash("Záznam upraven!")
+        if request.form.get("return_to_day") == "1":
+            return redirect(url_for("trenink_dne", date_value=workout.date))
         return redirect(url_for("historie"))
 
     ordered_exercises, favorite_exercises, custom_exercises = get_exercise_choices()

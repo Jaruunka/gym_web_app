@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v7-today-inline";
+const CACHE_VERSION = "v8-minimal";
 const STATIC_CACHE = `gym-static-${CACHE_VERSION}`;
 const PAGE_CACHE_PREFIX = `gym-pages-${CACHE_VERSION}-user-`;
 const CHART_JS_URL =
@@ -23,12 +23,7 @@ const AUTH_PATHS = [
 ];
 
 const QUEUEABLE_PATHS = [
-  /^\/zadat\/?$/,
-  /^\/edit\/\d+\/?$/,
-  /^\/delete\/\d+\/?$/,
-  /^\/favorite-exercise\/?$/,
-  /^\/custom-exercise\/add\/?$/,
-  /^\/custom-exercise\/delete\/\d+\/?$/
+  /^\/zadat\/?$/
 ];
 
 let syncInProgress = null;
@@ -127,7 +122,7 @@ self.addEventListener("message", event => {
       await setCurrentUserId(message.userId);
       await syncOfflineData();
       if (message.prepareOffline !== false) {
-        await prepareOfflineCache(false);
+        await prepareOfflineCore();
       }
     })());
   }
@@ -137,14 +132,11 @@ self.addEventListener("message", event => {
   }
 
   if (message.type === "SYNC_OFFLINE_DATA") {
-    event.waitUntil((async () => {
-      await syncOfflineData();
-      await prepareOfflineCache(false);
-    })());
+    event.waitUntil(syncOfflineData());
   }
 
   if (message.type === "REFRESH_OFFLINE_CACHE") {
-    event.waitUntil(prepareOfflineCache(true));
+    event.waitUntil(prepareOfflineCore());
   }
 });
 
@@ -169,12 +161,8 @@ function pageCacheName(userId) {
   return `${PAGE_CACHE_PREFIX}${String(userId)}`;
 }
 
-function pendingPageCacheName(userId) {
-  return `${pageCacheName(userId)}-pending`;
-}
-
-function offlineVersionKey(userId) {
-  return `offlineCacheVersion:${CACHE_VERSION}:${String(userId)}`;
+function offlineCoreKey(userId) {
+  return `offlineCoreReady:${CACHE_VERSION}:${String(userId)}`;
 }
 
 function canCache(response) {
@@ -257,18 +245,6 @@ async function networkFirstPage(request) {
 
   try {
     const response = await fetch(request);
-    const userId = await getCurrentUserId();
-
-    if (
-      userId &&
-      !isAuthPath(requestUrl.pathname) &&
-      !redirectedToLogin(response) &&
-      canCache(response)
-    ) {
-      const cache = await caches.open(pageCacheName(userId));
-      await cache.put(request, response.clone());
-    }
-
     triggerSync();
     return response;
   } catch (error) {
@@ -317,11 +293,6 @@ async function handleMutationRequest(request) {
 
   try {
     const response = await fetch(request.clone());
-
-    if (response.ok || response.redirected) {
-      await cacheMutationDestination(response);
-    }
-
     return response;
   } catch (error) {
     const userId = await getCurrentUserId();
@@ -381,29 +352,6 @@ async function handleMutationRequest(request) {
 
     return offlineResponse(request, true, message, 202);
   }
-}
-
-async function cacheMutationDestination(response) {
-  const userId = await getCurrentUserId();
-  if (
-    !userId ||
-    redirectedToLogin(response) ||
-    !canCache(response) ||
-    response.type !== "basic"
-  ) {
-    return;
-  }
-
-  const responseUrl = new URL(response.url);
-  if (isAuthPath(responseUrl.pathname)) {
-    return;
-  }
-
-  const cache = await caches.open(pageCacheName(userId));
-  await cache.put(
-    new Request(response.url, { method: "GET" }),
-    response.clone()
-  );
 }
 
 async function addOfflineNotice(response, message) {
@@ -588,7 +536,6 @@ async function performSync() {
       type: "OFFLINE_SYNC_COMPLETE",
       count: syncedCount
     });
-    await prepareOfflineCache(true);
   }
 }
 
@@ -609,156 +556,72 @@ async function requestBackgroundSync() {
   }
 }
 
-async function prepareOfflineCache(force = false) {
+async function prepareOfflineCore(force = false) {
   if (cachePreparationInProgress) {
     return cachePreparationInProgress;
   }
 
-  cachePreparationInProgress = performCachePreparation(force)
-    .finally(() => {
-      cachePreparationInProgress = null;
-    });
+  cachePreparationInProgress = (async () => {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return;
+    }
 
-  return cachePreparationInProgress;
-}
+    const cacheName = pageCacheName(userId);
+    if (
+      !force &&
+      await caches.has(cacheName) &&
+      await getMeta(offlineCoreKey(userId)) === true
+    ) {
+      await notifyClients({
+        type: "OFFLINE_CACHE_READY",
+        count: 0,
+        unchanged: true
+      });
+      return;
+    }
 
-async function performCachePreparation(force) {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return;
-  }
-
-  let manifestResponse;
-  try {
-    manifestResponse = await fetch("/api/offline-manifest", {
-      credentials: "same-origin",
-      cache: "no-store"
-    });
-  } catch (error) {
-    return;
-  }
-
-  if (
-    !manifestResponse.ok ||
-    redirectedToLogin(manifestResponse)
-  ) {
-    return;
-  }
-
-  const manifest = await manifestResponse.json();
-  const versionKey = offlineVersionKey(userId);
-  const savedVersion = await getMeta(versionKey);
-  const finalCacheName = pageCacheName(userId);
-  const finalCacheExists = await caches.has(finalCacheName);
-
-  if (
-    !force &&
-    finalCacheExists &&
-    savedVersion === manifest.version
-  ) {
     await notifyClients({
-      type: "OFFLINE_CACHE_READY",
-      count: 0,
-      unchanged: true
+      type: "OFFLINE_CACHE_START",
+      count: 2
     });
-    return;
-  }
 
-  await notifyClients({
-    type: "OFFLINE_CACHE_START",
-    count: manifest.urls.length
-  });
+    const cache = await caches.open(cacheName);
+    const urls = ["/", "/zadat"];
+    let cachedCount = 0;
 
-  const pendingCacheName = pendingPageCacheName(userId);
-  await caches.delete(pendingCacheName);
-  const pendingCache = await caches.open(pendingCacheName);
-
-  let cachedCount = 0;
-  let failedCount = 0;
-  const urls = Array.from(new Set(manifest.urls || []));
-
-  for (let index = 0; index < urls.length; index += 6) {
-    const batch = urls.slice(index, index + 6);
-    const results = await Promise.all(
-      batch.map(async relativeUrl => {
-        const absoluteUrl = new URL(
-          relativeUrl,
-          self.location.origin
-        ).href;
-        const pageRequest = new Request(absoluteUrl, {
+    for (const url of urls) {
+      try {
+        const request = new Request(url, {
           method: "GET",
           credentials: "same-origin"
         });
-
-        try {
-          const response = await fetch(pageRequest);
-          if (
-            !canCache(response) ||
-            redirectedToLogin(response)
-          ) {
-            return false;
-          }
-          await pendingCache.put(
-            pageRequest,
-            response.clone()
-          );
-          return true;
-        } catch (error) {
-          return false;
+        const response = await fetch(request);
+        if (canCache(response) && !redirectedToLogin(response)) {
+          await cache.put(request, response.clone());
+          cachedCount += 1;
         }
-      })
-    );
-
-    cachedCount += results.filter(Boolean).length;
-    failedCount += results.filter(result => !result).length;
-  }
-
-  const preparedRequests = await pendingCache.keys();
-
-  if (failedCount === 0) {
-    await caches.delete(finalCacheName);
-  }
-
-  const destinationCache = await caches.open(finalCacheName);
-  for (const request of preparedRequests) {
-    const response = await pendingCache.match(request);
-    if (response) {
-      await destinationCache.put(request, response);
+      } catch (error) {
+        // Starší uložená kopie zůstane k dispozici.
+      }
     }
-  }
 
-  await caches.delete(pendingCacheName);
+    await notifyClients({
+      type: cachedCount === urls.length
+        ? "OFFLINE_CACHE_READY"
+        : "OFFLINE_CACHE_PARTIAL",
+      count: cachedCount,
+      failed: urls.length - cachedCount
+    });
 
-  if (failedCount === 0) {
-    await setMeta(versionKey, manifest.version);
-  }
-
-  await notifyClients({
-    type: failedCount === 0
-      ? "OFFLINE_CACHE_READY"
-      : "OFFLINE_CACHE_PARTIAL",
-    count: cachedCount,
-    failed: failedCount
+    if (cachedCount === urls.length) {
+      await setMeta(offlineCoreKey(userId), true);
+    }
+  })().finally(() => {
+    cachePreparationInProgress = null;
   });
-}
 
-async function ensureStaticResource(url) {
-  const existing = await caches.match(url);
-  if (existing) {
-    return true;
-  }
-
-  try {
-    const response = await fetch(url);
-    if (!canCache(response)) {
-      return false;
-    }
-    const cache = await caches.open(STATIC_CACHE);
-    await cache.put(url, response.clone());
-    return true;
-  } catch (error) {
-    return false;
-  }
+  return cachePreparationInProgress;
 }
 
 async function notifyClients(message) {
@@ -889,7 +752,6 @@ async function clearCurrentUserContext() {
 
   if (userId) {
     await caches.delete(pageCacheName(userId));
-    await caches.delete(pendingPageCacheName(userId));
-    await deleteMeta(offlineVersionKey(userId));
+    await deleteMeta(offlineCoreKey(userId));
   }
 }

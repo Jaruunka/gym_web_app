@@ -1050,7 +1050,13 @@ def offline_manifest():
 @app.route("/delete/<int:workout_id>", methods=["POST"])
 @login_required
 def delete_workout(workout_id):
-    workout = Workout.query.get_or_404(workout_id)
+    # Offline fronta nebo starší cachovaná stránka může stejný požadavek
+    # odeslat podruhé. Smazání proto držíme idempotentní: neexistující záznam
+    # není chyba a uživatel se místo 404 bezpečně vrátí do historie.
+    workout = db.session.get(Workout, workout_id)
+    if workout is None:
+        flash("Záznam už byl smazán.", "success")
+        return redirect(url_for("historie"))
     if workout.user_id != current_user.id:
         flash("Nemáš oprávnění mazat tento záznam!")
         return redirect(url_for("historie"))

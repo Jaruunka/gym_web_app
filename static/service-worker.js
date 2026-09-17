@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6-light";
 const STATIC_CACHE = `gym-static-${CACHE_VERSION}`;
 const PAGE_CACHE_PREFIX = `gym-pages-${CACHE_VERSION}-user-`;
 const CHART_JS_URL =
@@ -13,8 +13,7 @@ const USER_CONTEXT_KEY = "currentUserId";
 const STATIC_FILES = [
   "/static/manifest.json",
   "/static/icons/icon-192.png",
-  "/static/icons/icon-512.png",
-  CHART_JS_URL
+  "/static/icons/icon-512.png"
 ];
 
 const AUTH_PATHS = [
@@ -628,8 +627,6 @@ async function performCachePreparation(force) {
   if (!userId) {
     return;
   }
-
-  await ensureStaticResource(CHART_JS_URL);
 
   let manifestResponse;
   try {

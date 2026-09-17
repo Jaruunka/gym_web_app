@@ -414,6 +414,11 @@
             if (exercise === "__add_custom__") {
                 document.getElementById("custom-exercise-form").style.display = "block";
                 document.getElementById("custom_name").focus();
+            } else if (!navigator.onLine) {
+                // Všechny cviky už jsou součástí formuláře. Offline proto
+                // nepřecházíme na další serverovou stránku, pouze přepneme
+                // příslušná pole a můžeme rovnou pokračovat v zápisu.
+                toggleFields();
             } else {
                 updatePage();
             }

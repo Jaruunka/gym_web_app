@@ -951,9 +951,11 @@ def export_excel():
 @app.route("/api/offline-manifest")
 @login_required
 def offline_manifest():
-    """Seznam stránek, které má PWA připravit pro práci bez internetu."""
-    workouts = Workout.query.filter_by(
-        user_id=current_user.id
+    """Malý offline balíček: zápis a pouze dnešní trénink."""
+    today_iso = date.today().isoformat()
+    today_workouts = Workout.query.filter_by(
+        user_id=current_user.id,
+        date=today_iso,
     ).order_by(Workout.id.asc()).all()
 
     custom_exercises = CustomExercise.query.filter_by(
@@ -964,43 +966,22 @@ def offline_manifest():
         user_id=current_user.id
     ).order_by(FavoriteExercise.id.asc()).all()
 
-    workout_dates = sorted(
-        {str(workout.date) for workout in workouts},
-        reverse=True
-    )
-    exercises = sorted(
-        {workout.exercise for workout in workouts if workout.exercise}
-    )
-    available_exercises = sorted(
-        set(SILOVE_CVIKY) | {exercise.name for exercise in custom_exercises}
-    )
-
     urls = [
         url_for("index"),
         url_for("zadat"),
         url_for("historie"),
-        url_for("vsechny_treninky"),
     ]
 
-    urls.extend(
-        url_for("trenink_dne", date_value=workout_date)
-        for workout_date in workout_dates
-    )
-    urls.extend(
-        url_for("detail_cviku", exercise=exercise)
-        for exercise in exercises
-    )
+    if today_workouts:
+        urls.append(url_for("trenink_dne", date_value=today_iso))
+
     urls.extend(
         url_for("edit_workout", workout_id=workout.id)
-        for workout in workouts
+        for workout in today_workouts
     )
-    urls.extend(
-        url_for("zadat", exercise=exercise)
-        for exercise in available_exercises
-    )
-
     version_payload = {
-        "workouts": [
+        "today": today_iso,
+        "today_workouts": [
             [
                 workout.id,
                 str(workout.date),
@@ -1014,7 +995,7 @@ def offline_manifest():
                 workout.band_color,
                 workout.note,
             ]
-            for workout in workouts
+            for workout in today_workouts
         ],
         "custom_exercises": [
             [

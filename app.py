@@ -36,6 +36,7 @@ db_url = os.environ.get("DATABASE_URL")
 
 if db_url:
     db_url = db_url.replace("postgres://", "postgresql://")
+    db_url = db_url.replace("postgresql+psycopg://", "postgresql+psycopg2://")
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(basedir, "gym_2.db")

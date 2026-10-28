@@ -146,6 +146,20 @@
             width: 18px;
             height: 18px;
         }
+            .monthly-counter {
+            display: block;
+            width: fit-content;
+            max-width: 100%;
+            margin: 0 0 20px;
+            padding: 14px 18px;
+            background-color: #dcfce7;
+            color: #166534;
+            border: 2px solid #22c55e;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
     </style>
 
 
@@ -155,6 +169,11 @@
 <body>
 
     <h1>Zadat trénink</h1>
+
+    <div class="monthly-counter" role="status">
+        {{ current_month_name }} – počet tréninků: {{ monthly_workout_count }}
+    </div>
+
 
     {% if current_user.is_authenticated %}
         <p>

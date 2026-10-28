@@ -99,6 +99,20 @@
                 font-size: 1.35rem;
             }
         }
+            .monthly-counter {
+            display: block;
+            width: fit-content;
+            max-width: 100%;
+            margin: 0 0 20px;
+            padding: 14px 18px;
+            background-color: #dcfce7;
+            color: #166534;
+            border: 2px solid #22c55e;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
     </style>
 
     {% include '_pwa_head.html' %}
@@ -112,6 +126,10 @@
 
         {% if current_user.is_authenticated %}
             <p>Jsi přihlášen(a) jako {{ current_user.email }}.</p>
+
+    <div class="monthly-counter" role="status">
+        {{ current_month_name }} – počet tréninků: {{ monthly_workout_count }}
+    </div>
 
             <a href="{{ url_for('zadat') }}" class="button">
                 Zadat nový trénink

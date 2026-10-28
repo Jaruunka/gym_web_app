@@ -276,6 +276,29 @@ def get_exercise_progress(exercise, selected_date):
     return previous_date, previous_workouts, personal_record
 
 
+@app.context_processor
+def inject_monthly_workout_counter():
+    """Zpřístupní měsíční počet unikátních tréninkových dnů šablonám."""
+    if not current_user.is_authenticated:
+        return {}
+
+    today = date.today()
+    month_names = [
+        "Leden", "Únor", "Březen", "Duben", "Květen", "Červen",
+        "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"
+    ]
+    month_prefix = today.strftime("%Y-%m")
+    count = db.session.query(func.count(func.distinct(Workout.date))).filter(
+        Workout.user_id == current_user.id,
+        Workout.date.like(f"{month_prefix}%")
+    ).scalar() or 0
+
+    return {
+        "current_month_name": month_names[today.month - 1],
+        "monthly_workout_count": count,
+    }
+
+
 @app.template_filter("number")
 def format_number(value):
     if value is None:

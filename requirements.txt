@@ -9,3 +9,4 @@ numpy==1.26.4
 pandas==2.2.2
 Flask-Migrate==4.0.7
 email-validator==2.3.0
+psycopg[binary]==3.2.12
